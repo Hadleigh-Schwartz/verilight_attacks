@@ -1,0 +1,5 @@
+opengraphau:
+  num_main_classes: 27
+  num_sub_classes: 14
+  backbone : swin_transformer_base
+  checkpoint: "ME-GraphAU/checkpoints/OpenGprahAU-SwinB_second_stage.pth"
