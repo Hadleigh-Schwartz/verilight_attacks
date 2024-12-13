@@ -210,18 +210,18 @@ if VIS:
     for i in range(left_iris_landmarks_torch.shape[0]):
         coord = left_iris_landmarks_torch[i, :]
         x, y = coord[0].item(), coord[1].item()
-        cv2.circle(left_eye_crop_vis, (int(x), int(y)), 1, (0, 255, 0), -1)
+        cv2.circle(left_eye_crop_vis, (int(x), int(y)), 1, (0, 0, 255), -1)
+        # cv2.putText(left_eye_crop_vis, str(i + 468), (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 0, 255), 1)
     cv2.imshow("left_iris_landmarks", left_eye_crop_vis.astype(np.uint8))
     cv2.waitKey(0)
 
     for i in range(right_iris_landmarks_torch.shape[0]):
         coord = right_iris_landmarks_torch[i, :]
         x, y = coord[0].item(), coord[1].item()
-        cv2.circle(right_eye_crop_vis, (int(x), int(y)), 1, (0, 255, 0), -1)
+        cv2.circle(right_eye_crop_vis, (int(x), int(y)), 1, (0, 0, 255), -1)
+        # cv2.putText(right_eye_crop_vis, str(i + 473), (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 0, 255), 1)
     cv2.imshow("right_iris_landmarks", right_eye_crop_vis.astype(np.uint8)) 
     cv2.waitKey(0)
-
-
 
 # now adjust the iris landmarks to the original image pixel space
 left_eye_ratio = float(64)/max(left_eye_height*2, left_eye_width*2)
@@ -261,5 +261,11 @@ if VIS:
     cv2.imshow("iris_landmarks", blob_vis.astype(np.uint8))
     cv2.waitKey(0)
 
-
-
+# append the iris landmarks to the general landmarks array in the proper order
+# know from https://github.com/tensorflow/tfjs-models/blob/838611c02f51159afdd77469ce67f0e26b7bbb23/face-landmarks-detection/src/mediapipe-facemesh/keypoints.ts
+# [468, 469, 470, 471, 472] are left iris landmarks
+# confirmed by analyzing and comparing to here https://github.com/k-m-irfan/simplified_mediapipe_face_landmarks
+# that the indices of the left iris landmarks are 468, 469, 470, 471, 472, right iris landmarks are 473, 474, 475, 476, 477
+# (i.e., ordered same as in the MediaPipe 478-landmarker model), therefore can just append in order, left first, then right
+landmarks_torch = torch.cat([landmarks_torch, left_iris_landmarks_torch, right_iris_landmarks_torch], dim=0)
+print(landmarks_torch.shape)
