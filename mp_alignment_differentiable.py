@@ -24,6 +24,8 @@ import numpy as np
 import cv2
 from canonical_landmarks import canonical_metric_landmarks, procrustes_landmark_basis
 import torch
+import open3d as o3d
+
 
 class Singleton(type):
     _instances = {}
@@ -304,25 +306,38 @@ def align_landmarks(face_landmarks, init_width, init_height, curr_width, curr_he
         landmarks_copy, pcf
     )
 
-    init_focal_length = init_width
-    init_center = (init_width / 2, init_height / 2)
-    init_camera_matrix = np.array(
-        [[init_focal_length, 0, init_center[0]], [0, init_focal_length, init_center[1]], [0, 0, 1]],
-        dtype="double",
-    )
-    no_rot = np.float32([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
-    no_rotV, _ = cv2.Rodrigues(no_rot)
-    translation = np.float32([[0], [0], [z]])
-    world_points_2d, _ = cv2.projectPoints(
-        metric_landmarks.T,
-        no_rotV,
-        translation,
-        init_camera_matrix,
-        dist_coeff,
-    )
+    print("metric_landmarks", metric_landmarks.shape)
+  
+    points = torch.tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]], dtype=torch.float32)
+    print(points.shape)
 
-    landmark_coords_3d_aligned = metric_landmarks.T.tolist()
-    landmark_coords_2d_aligned = world_points_2d.reshape(-1, 2).tolist()
+    # # Convert the Torch tensor to an Open3D point cloud
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(metric_landmarks.T.numpy())
+    o3d.visualization.draw_geometries([pcd])
+
+
+
+
+    # init_focal_length = init_width
+    # init_center = (init_width / 2, init_height / 2)
+    # init_camera_matrix = np.array(
+    #     [[init_focal_length, 0, init_center[0]], [0, init_focal_length, init_center[1]], [0, 0, 1]],
+    #     dtype="double",
+    # )
+    # no_rot = np.float32([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    # no_rotV, _ = cv2.Rodrigues(no_rot)
+    # translation = np.float32([[0], [0], [z]])
+    # world_points_2d, _ = cv2.projectPoints(
+    #     metric_landmarks.T,
+    #     no_rotV,
+    #     translation,
+    #     init_camera_matrix,
+    #     dist_coeff,
+    # )
+
+    # landmark_coords_3d_aligned = metric_landmarks.T.tolist()
+    # landmark_coords_2d_aligned = world_points_2d.reshape(-1, 2).tolist()
 
     
-    return landmark_coords_3d_aligned, landmark_coords_2d_aligned
+    # return landmark_coords_3d_aligned, landmark_coords_2d_aligned

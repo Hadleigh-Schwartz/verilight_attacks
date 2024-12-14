@@ -14,7 +14,9 @@ import numpy as np
 from hadleigh_utils import pad_image, get_real_mediapipe_results
 import matplotlib.pyplot as plt
 import pandas as pd
-from mp_alignment import align_landmarks
+from mp_alignment_differentiable import align_landmarks
+from mp_alignment_original import align_landmarks as align_landmarks_original
+import open3d as o3d    
 
 sys.path.append("facenet-pytorch")
 from models.mtcnn import MTCNN
@@ -282,6 +284,22 @@ class PyTorchMediapipeFaceMesh(nn.Module):
             None
         """
         real_mp_landmarks, real_mp_blendshapes = get_real_mediapipe_results(padded_face)
+
+        # visualize point cloud of landmarks
+        # pc = o3d.geometry.PointCloud()
+        # pc.points = o3d.utility.Vector3dVector(landmarks[:, :3])
+        # o3d.visualization.draw_geometries([pc])
+
+        # print(np.min(landmarks[:, 2]), np.max(landmarks[:, 2]), np.min(real_mp_landmarks[:, 2]), np.max(real_mp_landmarks[:, 2]))
+        # # print(real_mp_landmarks[:,2])
+        # print(real_mp_landmarks.shape, landmarks.shape)
+        # pc = o3d.geometry.PointCloud()
+        # pc.points = o3d.utility.Vector3dVector(real_mp_landmarks)
+        # o3d.visualization.draw_geometries([pc])
+
+        # H, W = padded_face.shape[0], padded_face.shape[1]
+        # _, landmark_coords_2d_aligned  = align_landmarks_original(real_mp_landmarks, W, H, W, H)
+        
         real_mp_blendshapes = real_mp_blendshapes.round(3)
         blendshapes = blendshapes.round(3)
 
@@ -513,7 +531,15 @@ blendshapes_np = blendshapes.detach().numpy()
 mp.compare_to_real_mediapipe(landmarks_np, blendshapes_np, padded_face)
 W = torch.tensor(padded_face.shape[1])
 H = torch.tensor(padded_face.shape[0])
-align_landmarks(landmarks, W, H, W, H)
+
+test = landmarks_np.copy()
+print(test.shape)
+test[:, 2] = test[:, 2] / 200
+
+test_torch = landmarks.clone()
+test_torch[:, 2] = test_torch[:, 2] / 200
+# align_landmarks_original(test, W, H, W, H)
+align_landmarks(test_torch, W, H, W, H)
 
 # webcam live demo
 # cap = cv2.VideoCapture(0)

@@ -21,7 +21,7 @@ from mediapipe import solutions
 from mediapipe.framework.formats import landmark_pb2
 
 
-import mp_alignment
+import mp_alignment_differentiable
 
 from signal_utils import single_feature_signal_processing, rolling_average
 from rp_lsh import hash_point
@@ -274,7 +274,7 @@ class MPExtractor(object):
             # MediaPipe by deafult returns facial landmark coordinates normalized to 0-1 based on the input frame dimensions. Here we 
             # un-normalize to get coordinates ranging from 0-W/0_H (i.e., actual pixel coordinates)
             landmark_coords = [(landmark.x * W, landmark.y * H, landmark.z) for landmark in face_landmarks] 
-            _, landmark_coords_2d_aligned  = mp_alignment.align_landmarks(landmark_coords, input_frame_W, input_frame_H, W, H)
+            _, landmark_coords_2d_aligned  = mp_alignment_differentiable.align_landmarks(landmark_coords, input_frame_W, input_frame_H, W, H)
             blendshapes = detection_result.face_blendshapes[0]
 
             if config.bbox_norm_dists:
