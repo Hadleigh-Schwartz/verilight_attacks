@@ -119,7 +119,6 @@ def project_xy(landmarks, pcf):
 
     landmarks = landmarks * torch.Tensor([[x_scale, y_scale, x_scale]]).T
     landmarks = landmarks + torch.Tensor([[x_translation, y_translation, 0]]).T
-
     return landmarks
 
 
