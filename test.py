@@ -263,7 +263,7 @@ class PyTorchMediapipeFaceMesh(nn.Module):
 
         return iris_landmarks
 
-    def compare_to_real_mediapipe(self, landmarks, blendshapes, padded_face_img_path):
+    def compare_to_real_mediapipe(self, landmarks, blendshapes, padded_face):
         """
 
         Parameters:
@@ -271,17 +271,19 @@ class PyTorchMediapipeFaceMesh(nn.Module):
                 The facial landmarks outputted by our model
             blendshapes: np.ndarray, 52, 
                 The blendshapes outputted by our model
-            padded_face_img_path : str
-                The path to the image of the face that was padded and preprocessed for the facial landmark detection. 
+            padded_face : np.ndarray, HxWx3 in RGB format
+                Image of the face that was padded and preprocessed for the facial landmark detection. 
                 All landmarks are relative to this image, so we must use it to visualize the landmarks and blendshapes outputted by our model.
         
         Returns:
             None
         """
-        real_mp_landmarks, real_mp_blendshapes = get_real_mediapipe_results(padded_face_img_path)
-        padded_face = cv2.imread(padded_face_img_path)
-        real_mp_blendshapes = real_mp_blendshapes[0].round(3)
+        real_mp_landmarks, real_mp_blendshapes = get_real_mediapipe_results(padded_face)
+        real_mp_blendshapes = real_mp_blendshapes.round(3)
         blendshapes = blendshapes.round(3)
+
+        # now convert padded_face to BGR for below opencv stuff
+        padded_face = cv2.cvtColor(padded_face, cv2.COLOR_RGB2BGR)
 
         # make blown up visualization of landmarks for comparison of all 478
         scaled_real_mp_landmarks = real_mp_landmarks[:, :2] * 35
@@ -438,11 +440,10 @@ img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = True) # emul
 landmarks, blendshapes, padded_face = mp(img_tensor)
 print(landmarks.grad_fn, blendshapes.grad_fn)
 
-padded_face = padded_face.detach().numpy()
-cv2.imwrite("padded_face.png", padded_face.astype(np.uint8)[:, :, ::-1]) 
+padded_face = padded_face.detach().numpy().astype(np.uint8)
 landmarks_np = landmarks.detach().numpy()
 blendshapes_np = blendshapes.detach().numpy()
-mp.compare_to_real_mediapipe(landmarks_np, blendshapes_np, "padded_face.png")
+mp.compare_to_real_mediapipe(landmarks_np, blendshapes_np, padded_face)
 
 
 # cap = cv2.VideoCapture(0)

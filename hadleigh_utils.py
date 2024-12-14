@@ -44,9 +44,23 @@ def pad_image(im, desired_size=192):
     new_im = new_im.permute(1, 2, 0)
     return new_im
 
-def get_real_mediapipe_results(img_path):
+def get_real_mediapipe_results(img):
+    """
+    Compute the landmarks and blendshapes from the image using the actual Google mediapipe model
+
+    Parameters:
+    img: np.ndarray
+        The image to process
+    
+    Returns:
+    landmarks_np: np.ndarray
+        The landmarks detected for the first face
+    blendshapes_np: np.ndarray
+        The blendshape scores detected for the first face
+    """
     mesh_detector = init_mpipe_blendshapes_model(task_path = "deconstruct-mediapipe/face_landmarker_v2_with_blendshapes.task")
-    image_mp = mp.Image.create_from_file(img_path)
+    img = np.ascontiguousarray(img, dtype=np.uint8)
+    image_mp = mp.Image(image_format=mp.ImageFormat.SRGB, data=img)
     mesh_results = mesh_detector.detect(image_mp)
     # Convert landmarks to numpy
     landmarks_np = []
@@ -57,14 +71,6 @@ def get_real_mediapipe_results(img_path):
     landmarks_np = np.array(landmarks_np).astype("float32")
 
     landmarks_np = landmarks_np[0, :, :]
-
-    # image_cv = cv2.imread(img_path)
-    # for i in range(landmarks_np.shape[0]):
-    #     coord = landmarks_np[i, :]
-    #     x, y = coord[0], coord[1]
-    #     cv2.circle(image_cv, (int(x*image_cv.shape[1]), int(y*image_cv.shape[0])), 1, (0, 255, 0), -1)
-    # cv2.imshow("gt landmarks", image_cv)
-    # cv2.waitKey(0)
 
     blendshapes_np = np.array(
         [
@@ -77,6 +83,7 @@ def get_real_mediapipe_results(img_path):
             for face_idx in range(len(mesh_results.face_landmarks))
         ]
     )
+    blendshapes_np = blendshapes_np[0, :]
     return landmarks_np, blendshapes_np
     
 
