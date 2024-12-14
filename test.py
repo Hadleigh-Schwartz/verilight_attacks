@@ -285,21 +285,19 @@ class PyTorchMediapipeFaceMesh(nn.Module):
         """
         real_mp_landmarks, real_mp_blendshapes = get_real_mediapipe_results(padded_face)
 
-        # visualize point cloud of landmarks
+        # # visualize point clouds of aligned landmarks, real and ours
+        # W, H = padded_face.shape[1], padded_face.shape[0]
+        # aligned_real, _ = align_landmarks_original(real_mp_landmarks, W, H, W, H)
+        # aligned_real = np.array(aligned_real)
         # pc = o3d.geometry.PointCloud()
-        # pc.points = o3d.utility.Vector3dVector(landmarks[:, :3])
+        # pc.points = o3d.utility.Vector3dVector(aligned_real)
         # o3d.visualization.draw_geometries([pc])
 
-        # print(np.min(landmarks[:, 2]), np.max(landmarks[:, 2]), np.min(real_mp_landmarks[:, 2]), np.max(real_mp_landmarks[:, 2]))
-        # # print(real_mp_landmarks[:,2])
-        # print(real_mp_landmarks.shape, landmarks.shape)
+        # aligned_ours, _ = align_landmarks(landmarks, W, H, W, H)
         # pc = o3d.geometry.PointCloud()
-        # pc.points = o3d.utility.Vector3dVector(real_mp_landmarks)
+        # pc.points = o3d.utility.Vector3dVector(aligned_ours.detach().numpy())
         # o3d.visualization.draw_geometries([pc])
 
-        # H, W = padded_face.shape[0], padded_face.shape[1]
-        # _, landmark_coords_2d_aligned  = align_landmarks_original(real_mp_landmarks, W, H, W, H)
-        
         real_mp_blendshapes = real_mp_blendshapes.round(3)
         blendshapes = blendshapes.round(3)
 
@@ -386,6 +384,12 @@ class PyTorchMediapipeFaceMesh(nn.Module):
         Parameters:
         img_tensor: torch.Tensor
             Image tensor, H x W x 3, RGB
+
+        Returns:
+        landmarks: torch.Tensor
+            478 x 3 tensor of FaceMesh dense landmarks. 
+        blendshapes: torch.Tensor
+            52 tensor of blendshape scores
         """
         # Note: detect_face uses with torch.no_grad() internally. Is that a problem?
         face = self.detect_face(img_tensor)
@@ -451,6 +455,10 @@ class PyTorchMediapipeFaceMesh(nn.Module):
         # IMPORTANT: SWAP LEFT AND RIGHT IRIS LANDMARKS. Left crop actually corresponds to what MP considers right eye, because of mirrorring.This is confirmed via the zoomed-in visualization
         # comparing actual MediaPipe 478-landmarker model output to the output of our piecemeal facial then iris landmark detection approach
         all_landmarks = torch.cat([facial_landmarks, right_iris_landmarks, left_iris_landmarks], dim=0)
+        
+        # The z coordinate of the landmarks is scaled by the height of the image, unlike in the case of the actual MediaPipe model.
+        # To convert to the same scale as the actual MediaPipe model, we need to divide the z coordinate by the height of the image.
+        all_landmarks[:, 2] = all_landmarks[:, 2] / padded_face.shape[0]
 
         # # unlike in case of landmarks outputted by the actual mediapipe model, ours currently are already
         # # scaled by the image dimensions, so no need to perform line 96 in deconstruct-mediapipe/test_converted_model.py
@@ -531,15 +539,8 @@ blendshapes_np = blendshapes.detach().numpy()
 mp.compare_to_real_mediapipe(landmarks_np, blendshapes_np, padded_face)
 W = torch.tensor(padded_face.shape[1])
 H = torch.tensor(padded_face.shape[0])
-
-test = landmarks_np.copy()
-print(test.shape)
-test[:, 2] = test[:, 2] / 200
-
-test_torch = landmarks.clone()
-test_torch[:, 2] = test_torch[:, 2] / 200
-# align_landmarks_original(test, W, H, W, H)
-align_landmarks(test_torch, W, H, W, H)
+aligned3d, aligned2d  = align_landmarks(landmarks, W, H, W, H)
+print(aligned3d.grad_fn, aligned2d.grad_fn)
 
 # webcam live demo
 # cap = cv2.VideoCapture(0)

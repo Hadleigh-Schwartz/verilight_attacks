@@ -2729,12 +2729,6 @@ def align_landmarks(face_landmarks, init_width, init_height, curr_width, curr_he
         landmarks.copy(), pcf
     )
     
-    # # Convert the Torch tensor to an Open3D point cloud
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(metric_landmarks.T)
-    o3d.visualization.draw_geometries([pcd])
-
-
     # uncomment below to get nose_tip_2D (i.e., a projection of the aligned 3D nose tip to the original input video frame)
     # see here:
     # https://github.com/google/mediapipe/issues/1379#issuecomment-752534379

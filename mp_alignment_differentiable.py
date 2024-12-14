@@ -20,7 +20,6 @@
 # Rasmus Jones's (Github user Rassibassi)
 # face alignment implementation, found at https://github.com/Rassibassi/mediapipeDemos/blob/main/head_posture.py
 
-import numpy as np
 import cv2
 from canonical_landmarks import canonical_metric_landmarks, procrustes_landmark_basis
 import torch
@@ -186,12 +185,12 @@ def internal_solve_weighted_orthogonal_problem(sources, targets, sqrt_weights):
 
     # tranposed((I - C) A_w) = tranposed(A_w) (I - C) =
     # tranposed(A_w) - tranposed(A_w) C = tranposed(A_w) - c_w tranposed(j_w).
-    centered_weighted_sources = weighted_sources - np.matmul(
+    centered_weighted_sources = weighted_sources - torch.matmul(
         source_center_of_mass[:, None], sqrt_weights[None, :]
     )
 
 
-    design_matrix = np.matmul(weighted_targets, centered_weighted_sources.T)
+    design_matrix = torch.matmul(weighted_targets, centered_weighted_sources.T)
 
 
     rotation = compute_optimal_rotation(design_matrix)
@@ -259,7 +258,7 @@ def combine_transform_matrix(r_and_s, t):
 
 
 
-def align_landmarks(face_landmarks, init_width, init_height, curr_width, curr_height, z=-50, use_all_landmarks=False, refine_landmarks=True):
+def align_landmarks(landmarks, init_width, init_height, curr_width, curr_height, z=-50, use_all_landmarks=False, refine_landmarks=True):
     #init_width/height are the dimensions of the input video frame, and curr_width/height are the dimensions of the frame passed to 
     #the facial landmark extractor, which could be a crop (if initial face detection is being used). It is important to use
     # curr_width, curr_height for the intrinsic matrix/PCF used in the transformations. init_width/height should be used
@@ -282,7 +281,7 @@ def align_landmarks(face_landmarks, init_width, init_height, curr_width, curr_he
         [[focal_length, 0, center[0]], [0, focal_length, center[1]], [0, 0, 1]],
     ).to(torch.float64)
 
-    dist_coeff = np.zeros((4, 1))
+
 
     pcf = PCF(
         near=1,
@@ -292,52 +291,47 @@ def align_landmarks(face_landmarks, init_width, init_height, curr_width, curr_he
         fy=camera_matrix[1, 1],
     )
 
-    landmarks = torch.Tensor([(lm[0] / curr_width, lm[1] / curr_height, lm[2]) for lm in face_landmarks])
+    landmarks[:, 0] = landmarks[:, 0] / curr_width
+    landmarks[:, 1] = landmarks[:, 1] / curr_height
     landmarks = landmarks.T
-    print("HI", landmarks.shape)
 
     if refine_landmarks:
         landmarks = landmarks[:, :468]
     
-    # copy landmarks
     landmarks_copy = landmarks.clone()
-
     metric_landmarks, pose_transform_mat = get_metric_landmarks(
         landmarks_copy, pcf
     )
-
-    print("metric_landmarks", metric_landmarks.shape)
-  
-    points = torch.tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]], dtype=torch.float32)
-    print(points.shape)
-
-    # # Convert the Torch tensor to an Open3D point cloud
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(metric_landmarks.T.numpy())
-    o3d.visualization.draw_geometries([pcd])
-
-
-
-
+    metric_landmarks = metric_landmarks.T
+    
+    # Reprojection in numpy, can be used to confirm that my new version below in torcxh is correct
+    # import numpy as np
+    # dist_coeff = np.zeros((4, 1))
     # init_focal_length = init_width
     # init_center = (init_width / 2, init_height / 2)
     # init_camera_matrix = np.array(
     #     [[init_focal_length, 0, init_center[0]], [0, init_focal_length, init_center[1]], [0, 0, 1]],
-    #     dtype="double",
-    # )
+    #     dtype = "double")
     # no_rot = np.float32([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
     # no_rotV, _ = cv2.Rodrigues(no_rot)
     # translation = np.float32([[0], [0], [z]])
+    # metric_landmarks_np = metric_landmarks.clone().detach().numpy()
     # world_points_2d, _ = cv2.projectPoints(
-    #     metric_landmarks.T,
+    #     metric_landmarks_np.T,
     #     no_rotV,
     #     translation,
     #     init_camera_matrix,
     #     dist_coeff,
     # )
 
-    # landmark_coords_3d_aligned = metric_landmarks.T.tolist()
-    # landmark_coords_2d_aligned = world_points_2d.reshape(-1, 2).tolist()
+    # projection of the 3D metric landmarks under no distortion, rotation, and translation only in z dimension is simply 
+    # given by fX/(Z + z) + init_center[0], fY/(Z + z) + init_center[1], where X, Y, Z are the coordinates of the 3D metric landmarks
+    # and z is the provided z translation. This can be confirmed by uncommenting the code above and comparing the results with
+    # results computed below
+    init_focal_length = init_width
+    init_center = (init_width / 2, init_height / 2)
+    landmark_coords_2d_aligned = metric_landmarks[:, :2] 
+    landmark_coords_2d_aligned[:, 0] = ((landmark_coords_2d_aligned[:, 0] * init_focal_length )/(z + metric_landmarks[:,2]))  + init_center[0]
+    landmark_coords_2d_aligned[:, 1] = ((landmark_coords_2d_aligned[:, 1] * init_focal_length )/(z + metric_landmarks[:,2]))  + init_center[1]
 
-    
-    # return landmark_coords_3d_aligned, landmark_coords_2d_aligned
+    return metric_landmarks, landmark_coords_2d_aligned
