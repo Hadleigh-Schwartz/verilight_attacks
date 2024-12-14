@@ -18,6 +18,8 @@ from mp_alignment_original import align_landmarks as align_landmarks_original
 import open3d as o3d    
 from torchviz import make_dot
 
+sys.path.append("facenet-pytorch")
+from models.mtcnn import MTCNN
 
 sys.path.append("mediapipe_pytorch/facial_landmarks")
 from facial_lm_model import FacialLM_Model 
@@ -32,7 +34,10 @@ from mlp_mixer import MediaPipeBlendshapesMLPMixer
 class PyTorchMediapipeFaceMesh(nn.Module):
     def __init__(self):
         super(PyTorchMediapipeFaceMesh, self).__init__()
-
+        
+        # face detection
+        self.mtcnn = MTCNN()
+        
         # facial landmarks
         self.facelandmarker = FacialLM_Model()
         self.facelandmarker_weights = torch.load('mediapipe_pytorch/facial_landmarks/model_weights/facial_landmarks.pth')
@@ -48,6 +53,31 @@ class PyTorchMediapipeFaceMesh(nn.Module):
         # blendshapes from facial and iris landmarks
         self.blendshape_model = MediaPipeBlendshapesMLPMixer()
         self.blendshape_model.load_state_dict(torch.load("deconstruct-mediapipe/face_blendshapes.pth"))
+
+    def detect_face(self, img, padding = 50):
+        """
+        Detects face in image using MTCNN and returns cropped face tensor
+
+        WARNING: This is not differentiable, it's just here in c
+
+        Parameters:
+            img: torch.Tensor H x W x 3
+                The image to detect the face in
+            padding: int
+                The amount of padding to add around the detected face
+        
+        Returns:
+            torch.Tensor
+                Image cropped to detected face
+        """
+        bboxes, probs = self.mtcnn.detect(img)
+        if bboxes is None: # if no face detected
+            return torch.zeros(img.shape, dtype=torch.float32)
+        bbox = bboxes[0]
+        bbox = bbox + [-padding, -padding, padding, padding] # add padding to the bbox, based on observation that mediapipe landmarks extractor benefits from this
+        x1, y1, x2, y2 = bbox.astype(int)
+        cropped_face_tensor = img[y1:y2, x1:x2, :]
+        return cropped_face_tensor
 
     def preprocess_face_for_landmark_detection(self, img):
         """
@@ -259,6 +289,18 @@ class PyTorchMediapipeFaceMesh(nn.Module):
             52 tensor of blendshape scores
         """
 
+        face_check = self.detect_face(img_tensor)
+        # check if face is all zeros, which indicates no face was detected.
+        # this is not differentiable and the bbox isn't used. It's only here as a check to prevent 
+        # running the facial landmark detection model on an image with no face, 
+        # which would cause bizarre landmarks to be extracted with no recourse.
+        if torch.all(face_check == 0):
+            print("NO FACE DETECTED")
+            landmarks_zeroes = torch.zeros(478, 3)
+            blendshapes_zeroes = torch.zeros(52)
+            face_zeroes = torch.zeros_like(img_tensor)
+            return landmarks_zeroes, blendshapes_zeroes, face_zeroes
+
         proc_face = self.preprocess_face_for_landmark_detection(img_tensor)
 
         # run facial landmark detection
@@ -408,6 +450,9 @@ def compare_to_real_mediapipe(landmarks_torch,  blendshapes, padded_face, save_l
     """
     landmarks_np_ours = landmarks_torch.clone().detach().numpy()
     real_mp_landmarks, real_mp_blendshapes = get_real_mediapipe_results(padded_face)
+    if real_mp_landmarks is None and real_mp_blendshapes is None:
+        print("NO FACE DETECTED BY REAL MEDIAPIPE")
+        return
 
     W, H = padded_face.shape[1], padded_face.shape[0]
     aligned3d_real, aligned2d_real = align_landmarks_original(real_mp_landmarks, W, H, W, H)

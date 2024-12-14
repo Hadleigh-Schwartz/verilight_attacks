@@ -62,6 +62,10 @@ def get_real_mediapipe_results(img):
     img = np.ascontiguousarray(img, dtype=np.uint8)
     image_mp = mp.Image(image_format=mp.ImageFormat.SRGB, data=img)
     mesh_results = mesh_detector.detect(image_mp)
+
+    if len(mesh_results.face_landmarks) == 0:
+        return None, None
+    
     # Convert landmarks to numpy
     landmarks_np = []
     for face_idx in range(len(mesh_results.face_landmarks)):
