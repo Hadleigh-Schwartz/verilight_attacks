@@ -268,7 +268,7 @@ class PyTorchMediapipeFaceMesh(nn.Module):
 
         return iris_landmarks
 
-    def compare_to_real_mediapipe(self, landmarks, blendshapes, padded_face, save_landmark_comparison = False, live_demo = False):
+    def compare_to_real_mediapipe(self, landmarks_torch,  blendshapes, padded_face, save_landmark_comparison = False, live_demo = False):
         """
 
         Parameters:
@@ -283,23 +283,26 @@ class PyTorchMediapipeFaceMesh(nn.Module):
         Returns:
             None
         """
+        landmarks_np_ours = landmarks_torch.clone().detach().numpy()
         real_mp_landmarks, real_mp_blendshapes = get_real_mediapipe_results(padded_face)
 
+        W, H = padded_face.shape[1], padded_face.shape[0]
+        aligned3d_real, aligned2d_real = align_landmarks_original(real_mp_landmarks, W, H, W, H)
+        aligned3d_real = np.array(aligned3d_real)
+        aligned2d_real = np.array(aligned2d_real)
+        aligned3d_ours, aligned2d_ours = align_landmarks(landmarks_torch, W, H, W, H)
+
+        real_mp_blendshapes = real_mp_blendshapes.round(3)
+        blendshapes = blendshapes.round(3)
+
         # # visualize point clouds of aligned landmarks, real and ours
-        # W, H = padded_face.shape[1], padded_face.shape[0]
-        # aligned_real, _ = align_landmarks_original(real_mp_landmarks, W, H, W, H)
-        # aligned_real = np.array(aligned_real)
         # pc = o3d.geometry.PointCloud()
         # pc.points = o3d.utility.Vector3dVector(aligned_real)
         # o3d.visualization.draw_geometries([pc])
 
-        # aligned_ours, _ = align_landmarks(landmarks, W, H, W, H)
         # pc = o3d.geometry.PointCloud()
         # pc.points = o3d.utility.Vector3dVector(aligned_ours.detach().numpy())
         # o3d.visualization.draw_geometries([pc])
-
-        real_mp_blendshapes = real_mp_blendshapes.round(3)
-        blendshapes = blendshapes.round(3)
 
         # now convert padded_face to BGR for below opencv stuff
         padded_face = cv2.cvtColor(padded_face, cv2.COLOR_RGB2BGR)
@@ -307,7 +310,7 @@ class PyTorchMediapipeFaceMesh(nn.Module):
         if save_landmark_comparison:
             # make blown up visualization of landmarks for comparison of all 478
             scaled_real_mp_landmarks = real_mp_landmarks[:, :2] * 35
-            scaled_landmarks = landmarks[:, :2]* 35
+            scaled_landmarks = landmarks_np_ours[:, :2]* 35
             blank = np.ones((6000, 6000, 3), dtype=np.uint8) * 255
             for i in range(scaled_real_mp_landmarks.shape[0]):
                 coord = scaled_real_mp_landmarks[i, :]
@@ -344,34 +347,50 @@ class PyTorchMediapipeFaceMesh(nn.Module):
             cv2.circle(annotated_face_real, (int(x), int(y)), 1, (0, 255, 0), -1)
         
         annotated_face_ours = padded_face.copy()
-        for i in range(landmarks.shape[0]):
-            coord = landmarks[i, :]
+        for i in range(landmarks_np_ours.shape[0]):
+            coord = landmarks_np_ours[i, :]
             x, y = coord[0], coord[1]
             cv2.circle(annotated_face_ours, (int(x), int(y)), 1, (0, 0, 255), -1)
+        
+        # make annotated blank images of aligned landmarks
+        annotated_aligned_landmarks2d_real = np.ones((H, W, 3), dtype=np.uint8) * 255
+        for i in range(aligned2d_real.shape[0]):
+            coord = aligned2d_real[i, :]
+            x, y = coord[0], coord[1]
+            cv2.circle(annotated_aligned_landmarks2d_real, (int(x), int(y)), 1, (0, 255, 0), -1)
+        annotated_aligned_landmarks2d_ours = np.ones((H, W, 3), dtype=np.uint8) * 255
+        for i in range(aligned2d_ours.shape[0]):
+            coord = aligned2d_ours[i, :]
+            x, y = coord[0], coord[1]
+            cv2.circle(annotated_aligned_landmarks2d_ours, (int(x), int(y)), 1, (0, 0, 255), -1)
+
+        # concatenate the annotated faces to the annotated aligned landmarks
+        annotated_real = np.vstack((annotated_face_real, annotated_aligned_landmarks2d_real))
+        annotated_ours = np.vstack((annotated_face_ours, annotated_aligned_landmarks2d_ours))
         
 
         # concatenate the blendshapes to the image
         fig_arr_shape = fig_arr.shape
-        annotated_face_shape = annotated_face_real.shape
+        annotated_real_shape = annotated_real.shape
 
-        if annotated_face_shape[0]*2 < fig_arr_shape[0] and annotated_face_shape[1]*2 < fig_arr_shape[1]:
-            scaling_ratio = min(fig_arr_shape[0]/annotated_face_shape[0], fig_arr_shape[1]/annotated_face_shape[1])
-            annotated_face_real = cv2.resize(annotated_face_real, (0, 0), fx=scaling_ratio, fy=scaling_ratio)
-            annotated_face_ours = cv2.resize(annotated_face_ours, (0, 0), fx=scaling_ratio, fy=scaling_ratio)
+        if annotated_real_shape[0]*2 < fig_arr_shape[0] and annotated_real_shape[1]*2 < fig_arr_shape[1]:
+            scaling_ratio = min(fig_arr_shape[0]/annotated_real_shape[0], fig_arr_shape[1]/annotated_real_shape[1])
+            annotated_real = cv2.resize(annotated_real, (0, 0), fx=scaling_ratio, fy=scaling_ratio)
+            annotated_ours = cv2.resize(annotated_ours, (0, 0), fx=scaling_ratio, fy=scaling_ratio)
         
-        # update annotated_face_shape
-        annotated_face_shape = annotated_face_real.shape
+        # update annotated_real_shape
+        annotated_real_shape = annotated_real.shape
 
-        if fig_arr_shape[0] > annotated_face_shape[0]:
+        if fig_arr_shape[0] > annotated_real_shape[0]:
             # add padding to the image
-            padding = fig_arr_shape[0] - annotated_face_shape[0]
-            annotated_face_real = np.pad(annotated_face_real, ((0, padding), (0, 0), (0, 0)), mode='constant')
-            annotated_face_ours = np.pad(annotated_face_ours, ((0, padding), (0, 0), (0, 0)), mode='constant')
-        elif fig_arr_shape[0] < annotated_face_shape[0]:
-            padding = annotated_face_shape[0] - fig_arr_shape[0]
+            padding = fig_arr_shape[0] - annotated_real_shape[0]
+            annotated_real = np.pad(annotated_real, ((0, padding), (0, 0), (0, 0)), mode='constant')
+            annotated_ours = np.pad(annotated_ours, ((0, padding), (0, 0), (0, 0)), mode='constant')
+        elif fig_arr_shape[0] < annotated_real_shape[0]:
+            padding = annotated_real_shape[0] - fig_arr_shape[0]
             fig_arr = np.pad(fig_arr, ((0, padding), (0, 0), (0, 0)), mode='constant')
 
-        img = np.hstack((annotated_face_ours, annotated_face_real, fig_arr))
+        img = np.hstack((annotated_ours, annotated_real, fig_arr))
         cv2.imshow("Final Comp", img)
         if live_demo:
             if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -527,37 +546,35 @@ mp = PyTorchMediapipeFaceMesh()
 # print(landmarks.grad_fn, blendshapes.grad_fn)
 
 # validation on image
-img_path = "obama2.jpeg"
-img = cv2.imread(img_path)
-img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = True) # emulate format that will be output by generator
-landmarks, blendshapes, padded_face = mp(img_tensor)
-print(landmarks.grad_fn, blendshapes.grad_fn)
-padded_face = padded_face.detach().numpy().astype(np.uint8)
-landmarks_np = landmarks.detach().numpy()
-blendshapes_np = blendshapes.detach().numpy()
-mp.compare_to_real_mediapipe(landmarks_np, blendshapes_np, padded_face)
-W = torch.tensor(padded_face.shape[1])
-H = torch.tensor(padded_face.shape[0])
-aligned3d, aligned2d  = align_landmarks(landmarks, W, H, W, H)
-print(aligned3d.grad_fn, aligned2d.grad_fn)
+# img_path = "obama2.jpeg"
+# img = cv2.imread(img_path)
+# img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+# img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = True) # emulate format that will be output by generator
+# landmarks, blendshapes, padded_face = mp(img_tensor)
+# print(landmarks.grad_fn, blendshapes.grad_fn)
+# padded_face = padded_face.detach().numpy().astype(np.uint8)
+# blendshapes_np = blendshapes.detach().numpy()
+# mp.compare_to_real_mediapipe(landmarks, blendshapes_np, padded_face)
+# W = torch.tensor(padded_face.shape[1])
+# H = torch.tensor(padded_face.shape[0])
+# aligned3d, aligned2d  = align_landmarks(landmarks, W, H, W, H)
+# print(aligned3d.grad_fn, aligned2d.grad_fn)
 
 # webcam live demo
-# cap = cv2.VideoCapture(0)
-# count = 0
-# while True:
-#     ret, img = cap.read()
-#     if not ret:
-#         break
-#     count += 1
-#     if count < 4:
-#         continue
-#     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-#     img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = False)
-#     landmarks, blendshapes, padded_face = mp(img_tensor)
-#     padded_face = padded_face.detach().numpy().astype(np.uint8)
-#     landmarks_np = landmarks.detach().numpy()
-#     blendshapes_np = blendshapes.detach().numpy()
-#     mp.compare_to_real_mediapipe(landmarks_np, blendshapes_np, padded_face, live_demo = True)
+cap = cv2.VideoCapture(0)
+count = 0
+while True:
+    ret, img = cap.read()
+    if not ret:
+        break
+    count += 1
+    if count < 4:
+        continue
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = False)
+    landmarks, blendshapes, padded_face = mp(img_tensor)
+    padded_face = padded_face.detach().numpy().astype(np.uint8)
+    blendshapes_np = blendshapes.detach().numpy()
+    mp.compare_to_real_mediapipe(landmarks, blendshapes_np, padded_face, live_demo = True)
 
 

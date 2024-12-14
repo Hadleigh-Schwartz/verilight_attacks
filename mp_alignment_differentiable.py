@@ -20,7 +20,6 @@
 # Rasmus Jones's (Github user Rassibassi)
 # face alignment implementation, found at https://github.com/Rassibassi/mediapipeDemos/blob/main/head_posture.py
 
-import cv2
 from canonical_landmarks import canonical_metric_landmarks, procrustes_landmark_basis
 import torch
 import open3d as o3d
@@ -306,6 +305,7 @@ def align_landmarks(landmarks, init_width, init_height, curr_width, curr_height,
     
     # Reprojection in numpy, can be used to confirm that my new version below in torcxh is correct
     # import numpy as np
+    # import cv2
     # dist_coeff = np.zeros((4, 1))
     # init_focal_length = init_width
     # init_center = (init_width / 2, init_height / 2)
