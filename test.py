@@ -2,7 +2,10 @@ import sys
 import cv2
 import torch
 import numpy as np
-from hadleigh_utils import pad_image, get_real_mediapipe_results
+from hadleigh_utils import pad_image, get_real_mediapipe_results, TFLiteModel
+import matplotlib.pyplot as plt
+import pandas as pd
+import tensorflow as tf
 
 sys.path.append("facenet-pytorch")
 from models.mtcnn import MTCNN
@@ -14,8 +17,11 @@ from facial_lm_model import FacialLM_Model
 sys.path.append("mediapipe_pytorch/iris")
 from irismodel import IrisLM
 
+sys.path.append("deconstruct-mediapipe/")
+from blendshape_info import BLENDSHAPE_MODEL_LANDMARKS_SUBSET,  BLENDSHAPE_NAMES
+from mlp_mixer import MediaPipeBlendshapesMLPMixer
 
-VIS = True
+VIS = False
 
 # prepare models
 mtcnn = MTCNN() # face detector
@@ -32,11 +38,28 @@ irislandmarker_weights = torch.load('mediapipe_pytorch/iris/model_weights/irisla
 irislandmarker.load_state_dict(irislandmarker_weights)
 irislandmarker = irislandmarker.eval()
 
+blendshape_model = MediaPipeBlendshapesMLPMixer()
+blendshape_model.load_state_dict(torch.load("deconstruct-mediapipe/face_blendshapes.pth"))
 
+# TFLite model
+tflite_model = TFLiteModel("deconstruct-mediapipe/face_blendshapes.tflite")
 
 # load image
-img_path = "harry.jpg"
+img_path = "obama2.jpeg"
 img = cv2.imread(img_path)
+
+# cap = cv2.VideoCapture(0)
+# count = 0
+# img_path = "curr.jpg"
+# ret, img = cap.read()
+# if not ret:
+#     break
+# count += 1
+# if count < 4:
+#     continue
+# save as curr.jpg
+# cv2.imwrite(img_path, img)
+
 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 img_tensor = torch.tensor(img, dtype=torch.float32) # emulate format that will be output by generator
 
@@ -44,6 +67,8 @@ img_tensor = torch.tensor(img, dtype=torch.float32) # emulate format that will b
 # run face detection
 bboxes, probs = mtcnn.detect(img_tensor)
 bbox = bboxes[0]
+# add padding to the bbox
+bbox = bbox + [-50, -50, 50, 50]
 
 x1, y1, x2, y2 = bbox.astype(int)
 
@@ -62,6 +87,7 @@ blob = pad_image(cropped_face_tensor, desired_size=192) # resize
 if VIS:
     cv2.imshow("blob", blob.numpy().astype(np.uint8)[:, :, ::-1])
     cv2.waitKey(0)
+cv2.imwrite("blob_saved.png", blob.numpy().astype(np.uint8)[:, :, ::-1])
 blob = (blob / 127.5) - 1.0 # normalize
 blob = blob.permute(2, 0, 1) # per line 116 of mediapipe_pytorch/facial_landmarks/inference.py, blob is expected to have dimensions [3, H, W]
 
@@ -267,5 +293,95 @@ if VIS:
 # confirmed by analyzing and comparing to here https://github.com/k-m-irfan/simplified_mediapipe_face_landmarks
 # that the indices of the left iris landmarks are 468, 469, 470, 471, 472, right iris landmarks are 473, 474, 475, 476, 477
 # (i.e., ordered same as in the MediaPipe 478-landmarker model), therefore can just append in order, left first, then right
-landmarks_torch = torch.cat([landmarks_torch, left_iris_landmarks_torch, right_iris_landmarks_torch], dim=0)
+
+# SWAP LEFT AND RIGHT IRIS LANDMARKS. Left crop actually corresponds to what MP considers right eye, because of mirrorring.
+# This is confirmed by visualizing blown up stuff below
+landmarks_torch = torch.cat([landmarks_torch, right_iris_landmarks_torch, left_iris_landmarks_torch], dim=0)
 print(landmarks_torch.shape)
+
+# unlike in case of landmarks outputted by the actual mediapipe model, ours currently are already
+# scaled by the image dimensions, so no need to perform line 96 in deconstruct-mediapipe/test_converted_model.py
+blendshape_input = landmarks_torch[BLENDSHAPE_MODEL_LANDMARKS_SUBSET, :2]
+
+
+if VIS:
+    blob_vis = blob.permute(1, 2, 0)
+    blob_vis = (blob_vis + 1.0) * 127.5
+    blob_vis = blob_vis.numpy().astype(np.uint8)
+    blob_vis = np.ascontiguousarray(blob_vis, dtype=np.uint8)
+    blob_vis = cv2.cvtColor(blob_vis, cv2.COLOR_RGB2BGR)
+    for i in range(blendshape_input.shape[0]):
+        coord = blendshape_input[i, :]
+        x, y = coord[0].item(), coord[1].item()
+        cv2.circle(blob_vis, (int(x), int(y)), 1, (0, 255, 0), -1)
+    cv2.imshow("blendshape_input", blob_vis)
+    cv2.waitKey(0)
+
+
+blendshape_input = blendshape_input.unsqueeze(0) # add batch dimension
+
+with torch.no_grad():
+    pytorch_output = blendshape_model(blendshape_input)
+pytorch_blendshapes = pytorch_output.squeeze().detach().numpy().round(3)
+print(pytorch_blendshapes)
+
+tf_blendshapes = tflite_model.predict(blendshape_input)
+tf_blendshapes = tf_blendshapes.round(3)
+
+print(np.allclose(pytorch_blendshapes, tf_blendshapes, atol=1e-3))  
+
+real_mp_landmarks, real_mp_blendshapes = get_real_mediapipe_results("blob_saved.png")
+print("Real MediaPipe blendshapes:")
+print(real_mp_blendshapes.round(3))
+
+
+scaled_real_mp_landmarks = real_mp_landmarks[:, :2] * 35
+scaled_landmarks_torch = landmarks_torch[:, :2]* 35
+blank = np.ones((6000, 6000, 3), dtype=np.uint8) * 255
+for i in range(scaled_real_mp_landmarks.shape[0]):
+    coord = scaled_real_mp_landmarks[i, :]
+    x, y = coord[0], coord[1]
+    cv2.circle(blank, (int(x), int(y)), 3, (0, 255, 0), -1)
+    cv2.putText(blank, "Real" + str(i), (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+for i in range(scaled_landmarks_torch.shape[0]):
+    coord = scaled_landmarks_torch[i, :]
+    x, y = coord[0], coord[1]
+    cv2.circle(blank, (int(x), int(y)), 3, (0, 0, 255), -1)
+    cv2.putText(blank, "PyTorch" + str(i), (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+cv2.imwrite("blendshapes_comparison.png", blank)
+
+
+if VIS:
+    # create bar plots for the blendshapes
+    plt.style.use('ggplot')
+    plt.figsize=(20, 20)
+    df = pd.DataFrame(data={'pytorch': pytorch_blendshapes, 'real_mp': real_mp_blendshapes[0]}, 
+                        index=BLENDSHAPE_NAMES)
+    df.plot(kind='bar')
+
+    # get figure as numpy array
+    plt.tight_layout()
+    plt.draw()
+    fig = plt.gcf()
+    fig.canvas.draw()
+    fig_arr = np.array(fig.canvas.renderer.buffer_rgba())[:, :, :3]
+    plt.close()
+
+    # concatenate the blendshapes to the image
+    fig_arr_shape = fig_arr.shape
+    img_shape = img.shape
+    if fig_arr_shape[0] > img_shape[0]:
+        # add padding to the image
+        padding = fig_arr_shape[0] - img_shape[0]
+        img = np.pad(img, ((0, padding), (0, 0), (0, 0)), mode='constant')
+    elif fig_arr_shape[0] < img_shape[0]:
+        padding = img_shape[0] - fig_arr_shape[0]
+        fig_arr = np.pad(fig_arr, ((0, padding), (0, 0), (0, 0)), mode='constant')
+    img = np.hstack((img[:, :, ::-1], fig_arr))
+    cv2.imshow("Image blendshapes", img)
+    cv2.waitKey(0)
+
+
+
+
+
