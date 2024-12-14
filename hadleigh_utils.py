@@ -1,11 +1,14 @@
-"""
-Mostly tweaked versions of utils from submodules
-"""
+
 from torchvision import transforms
 import mediapipe as mp
 import numpy as np
 import cv2
 import tensorflow as tf
+from mp_alignment_differentiable import align_landmarks as align_landmarks_differentiable
+from mp_alignment_original import align_landmarks as align_landmarks_original
+import pandas as pd
+import matplotlib.pyplot as plt
+import open3d as o3d    
 
 import sys
 
@@ -104,3 +107,163 @@ class TFLiteModel:
             self.interpreter.set_tensor(details["index"], data)
         self.interpreter.invoke()
         return self.interpreter.get_tensor(self.output_details[0]["index"])
+
+
+def record_video():
+    """
+    Record and save a video on the webcam. Testing purposes
+    """
+    cap = cv2.VideoCapture(0)
+    fourcc = cv2.VideoWriter_fourcc("M", "J", "P", "G")
+    # out = cv2.VideoWriter('output.avi', fourcc, 20.0, (640, 480))
+    out = None
+    num_frames = 100
+    count = 0
+    while True:
+        ret, img = cap.read()
+        if not ret:
+            break
+        count += 1
+        if count < 4:
+            continue
+        if out is None:
+            out = cv2.VideoWriter('test_video.mp4', fourcc, 20.0, (img.shape[1], img.shape[0]))
+        out.write(img)
+        if count == num_frames:
+            break
+    out.release()
+    cap.release()
+
+
+def compare_to_real_mediapipe(landmarks_torch,  blendshapes, padded_face, save_landmark_comparison = False, live_demo = False):
+    """
+
+    Parameters:
+        landmarks: np.ndarray, 468 x 3
+            The facial landmarks outputted by our model
+        blendshapes: np.ndarray, 52, 
+            The blendshapes outputted by our model
+        padded_face : np.ndarray, HxWx3 in RGB format
+            Image of the face that was padded and preprocessed for the facial landmark detection. 
+            All landmarks are relative to this image, so we must use it to visualize the landmarks and blendshapes outputted by our model.
+    
+    Returns:
+        None
+    """
+    landmarks_np_ours = landmarks_torch.clone().detach().numpy()
+    real_mp_landmarks, real_mp_blendshapes = get_real_mediapipe_results(padded_face)
+    if real_mp_landmarks is None and real_mp_blendshapes is None:
+        print("NO FACE DETECTED BY REAL MEDIAPIPE")
+        return
+
+    W, H = padded_face.shape[1], padded_face.shape[0]
+    aligned3d_real, aligned2d_real = align_landmarks_original(real_mp_landmarks, W, H, W, H)
+    aligned3d_real = np.array(aligned3d_real)
+    aligned2d_real = np.array(aligned2d_real)
+    aligned3d_ours, aligned2d_ours = align_landmarks_differentiable(landmarks_torch, W, H, W, H)
+
+    real_mp_blendshapes = real_mp_blendshapes.round(3)
+    blendshapes = blendshapes.round(3)
+
+    # # visualize point clouds of aligned landmarks, real and ours
+    # pc = o3d.geometry.PointCloud()
+    # pc.points = o3d.utility.Vector3dVector(aligned_real)
+    # o3d.visualization.draw_geometries([pc])
+
+    # pc = o3d.geometry.PointCloud()
+    # pc.points = o3d.utility.Vector3dVector(aligned_ours.detach().numpy())
+    # o3d.visualization.draw_geometries([pc])
+
+    # now convert padded_face to BGR for below opencv stuff
+    padded_face = cv2.cvtColor(padded_face, cv2.COLOR_RGB2BGR)
+
+    if save_landmark_comparison:
+        # make blown up visualization of landmarks for comparison of all 478
+        scaled_real_mp_landmarks = real_mp_landmarks[:, :2] * 35
+        scaled_landmarks = landmarks_np_ours[:, :2]* 35
+        blank = np.ones((6000, 6000, 3), dtype=np.uint8) * 255
+        for i in range(scaled_real_mp_landmarks.shape[0]):
+            coord = scaled_real_mp_landmarks[i, :]
+            x, y = coord[0], coord[1]
+            cv2.circle(blank, (int(x), int(y)), 3, (0, 255, 0), -1)
+            cv2.putText(blank, "Real" + str(i), (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+        for i in range(scaled_landmarks.shape[0]):
+            coord = scaled_landmarks[i, :]
+            x, y = coord[0], coord[1]
+            cv2.circle(blank, (int(x), int(y)), 3, (0, 0, 255), -1)
+            cv2.putText(blank, "Our Model" + str(i), (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+        cv2.imwrite("landmarks_comparison.png", blank)
+
+    # create bar plots for the blendshapes
+    plt.style.use('ggplot')
+    plt.figsize=(20, 20)
+    df = pd.DataFrame(data={'Our Model': blendshapes, 'Real MP': real_mp_blendshapes}, 
+                        index=BLENDSHAPE_NAMES)
+    df.plot(kind='bar', color = ['r', 'g'])
+    plt.tight_layout()
+    plt.draw()
+    fig = plt.gcf()
+    fig.canvas.draw()
+    fig_arr = np.array(fig.canvas.renderer.buffer_rgba())[:, :, :3]
+    fig_arr = fig_arr[:, :, ::-1]
+    plt.close()
+
+
+    # make annotated faces
+    annotated_face_real = padded_face.copy()
+    for i in range(real_mp_landmarks.shape[0]):
+        coord = real_mp_landmarks[i, :]
+        x, y = coord[0], coord[1]
+        cv2.circle(annotated_face_real, (int(x), int(y)), 1, (0, 255, 0), -1)
+    
+    annotated_face_ours = padded_face.copy()
+    for i in range(landmarks_np_ours.shape[0]):
+        coord = landmarks_np_ours[i, :]
+        x, y = coord[0], coord[1]
+        cv2.circle(annotated_face_ours, (int(x), int(y)), 1, (0, 0, 255), -1)
+    
+    # make annotated blank images of aligned landmarks
+    annotated_aligned_landmarks2d_real = np.ones((H, W, 3), dtype=np.uint8) * 255
+    for i in range(aligned2d_real.shape[0]):
+        coord = aligned2d_real[i, :]
+        x, y = coord[0], coord[1]
+        cv2.circle(annotated_aligned_landmarks2d_real, (int(x), int(y)), 1, (0, 255, 0), -1)
+    annotated_aligned_landmarks2d_ours = np.ones((H, W, 3), dtype=np.uint8) * 255
+    for i in range(aligned2d_ours.shape[0]):
+        coord = aligned2d_ours[i, :]
+        x, y = coord[0], coord[1]
+        cv2.circle(annotated_aligned_landmarks2d_ours, (int(x), int(y)), 1, (0, 0, 255), -1)
+
+    # concatenate the annotated faces to the annotated aligned landmarks
+    annotated_real = np.vstack((annotated_face_real, annotated_aligned_landmarks2d_real))
+    annotated_ours = np.vstack((annotated_face_ours, annotated_aligned_landmarks2d_ours))
+    
+
+    # concatenate the blendshapes to the image
+    fig_arr_shape = fig_arr.shape
+    annotated_real_shape = annotated_real.shape
+
+    if annotated_real_shape[0]*2 < fig_arr_shape[0] and annotated_real_shape[1]*2 < fig_arr_shape[1]:
+        scaling_ratio = min(fig_arr_shape[0]/annotated_real_shape[0], fig_arr_shape[1]/annotated_real_shape[1])
+        annotated_real = cv2.resize(annotated_real, (0, 0), fx=scaling_ratio, fy=scaling_ratio)
+        annotated_ours = cv2.resize(annotated_ours, (0, 0), fx=scaling_ratio, fy=scaling_ratio)
+    
+    # update annotated_real_shape
+    annotated_real_shape = annotated_real.shape
+
+    if fig_arr_shape[0] > annotated_real_shape[0]:
+        # add padding to the image
+        padding = fig_arr_shape[0] - annotated_real_shape[0]
+        annotated_real = np.pad(annotated_real, ((0, padding), (0, 0), (0, 0)), mode='constant')
+        annotated_ours = np.pad(annotated_ours, ((0, padding), (0, 0), (0, 0)), mode='constant')
+    elif fig_arr_shape[0] < annotated_real_shape[0]:
+        padding = annotated_real_shape[0] - fig_arr_shape[0]
+        fig_arr = np.pad(fig_arr, ((0, padding), (0, 0), (0, 0)), mode='constant')
+
+    img = np.hstack((annotated_ours, annotated_real, fig_arr))
+    cv2.imshow("Final Comp", img)
+    if live_demo:
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            return
+    else:
+        cv2.waitKey(0)

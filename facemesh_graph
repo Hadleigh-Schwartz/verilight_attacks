@@ -1,6 +1,946 @@
 digraph {
-	graph [size="12,12"]
+	graph [size="126.0,126.0"]
 	node [align=left fontname=monospace fontsize=10 height=0.2 ranksep=0.1 shape=box style=filled]
-	13866410208 [label="
+	13943890704 [label="
  (478, 3)" fillcolor=darkolivegreen1]
+	14014428352 [label=CopySlices]
+	13960867408 -> 14014428352
+	13960867408 [label=CopySlices]
+	14014767008 -> 13960867408
+	14014767008 [label=CopySlices]
+	14014767056 -> 14014767008
+	14014767056 [label=CopySlices]
+	14014812272 -> 14014767056
+	14014812272 [label=CopySlices]
+	14014812224 -> 14014812272
+	14014812224 [label=CatBackward0]
+	14014812800 -> 14014812224
+	14014812800 [label=ViewBackward0]
+	14014813088 -> 14014812800
+	14014813088 [label=SliceBackward0]
+	14014813376 -> 14014813088
+	14014813376 [label=SliceBackward0]
+	14014813472 -> 14014813376
+	14014813472 [label=SliceBackward0]
+	14014813568 -> 14014813472
+	14014813568 [label=SelectBackward0]
+	14014813664 -> 14014813568
+	14014813664 [label=ConvolutionBackward0]
+	14014813760 -> 14014813664
+	14014813760 [label=PreluKernelBackward0]
+	14014813952 -> 14014813760
+	14014813952 [label=AddBackward0]
+	14014814096 -> 14014813952
+	14014814096 [label=ConvolutionBackward0]
+	14014814240 -> 14014814096
+	14014814240 [label=ConvolutionBackward0]
+	14014814048 -> 14014814240
+	14014814048 [label=PreluKernelBackward0]
+	14014814576 -> 14014814048
+	14014814576 [label=ConvolutionBackward0]
+	14014814720 -> 14014814576
+	14014814720 [label=PreluKernelBackward0]
+	14014814912 -> 14014814720
+	14014814912 [label=AddBackward0]
+	14014815056 -> 14014814912
+	14014815056 [label=ConvolutionBackward0]
+	14014815200 -> 14014815056
+	14014815200 [label=ConvolutionBackward0]
+	14014815008 -> 14014815200
+	14014815008 [label=PreluKernelBackward0]
+	14014815536 -> 14014815008
+	14014815536 [label=AddBackward0]
+	14014815728 -> 14014815536
+	14014815728 [label=ConvolutionBackward0]
+	14014815872 -> 14014815728
+	14014815872 [label=ConvolutionBackward0]
+	14014815632 -> 14014815872
+	14014815632 [label=PreluKernelBackward0]
+	14014816208 -> 14014815632
+	14014816208 [label=AddBackward0]
+	14014452304 -> 14014816208
+	14014452304 [label=ConvolutionBackward0]
+	14014453024 -> 14014452304
+	14014453024 [label=ConvolutionBackward0]
+	14014453504 -> 14014453024
+	14014453504 [label=ConstantPadNdBackward0]
+	14014910624 -> 14014453504
+	14014910624 [label=PreluKernelBackward0]
+	14014910720 -> 14014910624
+	14014910720 [label=AddBackward0]
+	14014910864 -> 14014910720
+	14014910864 [label=ConvolutionBackward0]
+	14014911008 -> 14014910864
+	14014911008 [label=ConvolutionBackward0]
+	14014910816 -> 14014911008
+	14014910816 [label=PreluKernelBackward0]
+	14014911344 -> 14014910816
+	14014911344 [label=AddBackward0]
+	14014911488 -> 14014911344
+	14014911488 [label=ConvolutionBackward0]
+	14014911632 -> 14014911488
+	14014911632 [label=ConvolutionBackward0]
+	14014911440 -> 14014911632
+	14014911440 [label=PreluKernelBackward0]
+	14014911968 -> 14014911440
+	14014911968 [label=AddBackward0]
+	14014912112 -> 14014911968
+	14014912112 [label=ConvolutionBackward0]
+	14014912256 -> 14014912112
+	14014912256 [label=ConvolutionBackward0]
+	14014912448 -> 14014912256
+	14014912448 [label=ConstantPadNdBackward0]
+	14014912640 -> 14014912448
+	14014912640 [label=PreluKernelBackward0]
+	14014912736 -> 14014912640
+	14014912736 [label=AddBackward0]
+	14014912880 -> 14014912736
+	14014912880 [label=ConvolutionBackward0]
+	14014913024 -> 14014912880
+	14014913024 [label=ConvolutionBackward0]
+	14014912832 -> 14014913024
+	14014912832 [label=PreluKernelBackward0]
+	14014913360 -> 14014912832
+	14014913360 [label=AddBackward0]
+	14014913504 -> 14014913360
+	14014913504 [label=ConvolutionBackward0]
+	14014913648 -> 14014913504
+	14014913648 [label=ConvolutionBackward0]
+	14014913456 -> 14014913648
+	14014913456 [label=PreluKernelBackward0]
+	14014913984 -> 14014913456
+	14014913984 [label=AddBackward0]
+	14014914128 -> 14014913984
+	14014914128 [label=ConvolutionBackward0]
+	14014914272 -> 14014914128
+	14014914272 [label=ConvolutionBackward0]
+	14014914464 -> 14014914272
+	14014914464 [label=ConstantPadNdBackward0]
+	14014918816 -> 14014914464
+	14014918816 [label=PreluKernelBackward0]
+	14014918912 -> 14014918816
+	14014918912 [label=AddBackward0]
+	14014919056 -> 14014918912
+	14014919056 [label=ConvolutionBackward0]
+	14014919200 -> 14014919056
+	14014919200 [label=ConvolutionBackward0]
+	14014919008 -> 14014919200
+	14014919008 [label=PreluKernelBackward0]
+	14014919536 -> 14014919008
+	14014919536 [label=AddBackward0]
+	14014919680 -> 14014919536
+	14014919680 [label=ConvolutionBackward0]
+	14014919824 -> 14014919680
+	14014919824 [label=ConvolutionBackward0]
+	14014919632 -> 14014919824
+	14014919632 [label=PreluKernelBackward0]
+	14014920160 -> 14014919632
+	14014920160 [label=AddBackward0]
+	14014920304 -> 14014920160
+	14014920304 [label=ConvolutionBackward0]
+	14014920448 -> 14014920304
+	14014920448 [label=ConvolutionBackward0]
+	14014920640 -> 14014920448
+	14014920640 [label=ConstantPadNdBackward0]
+	14014920832 -> 14014920640
+	14014920832 [label=PreluKernelBackward0]
+	14014920928 -> 14014920832
+	14014920928 [label=AddBackward0]
+	14014921072 -> 14014920928
+	14014921072 [label=ConvolutionBackward0]
+	14014921216 -> 14014921072
+	14014921216 [label=ConvolutionBackward0]
+	14014921024 -> 14014921216
+	14014921024 [label=PreluKernelBackward0]
+	14014921552 -> 14014921024
+	14014921552 [label=AddBackward0]
+	14014921696 -> 14014921552
+	14014921696 [label=ConvolutionBackward0]
+	14014921840 -> 14014921696
+	14014921840 [label=ConvolutionBackward0]
+	14014921648 -> 14014921840
+	14014921648 [label=PreluKernelBackward0]
+	14014922176 -> 14014921648
+	14014922176 [label=AddBackward0]
+	14014922320 -> 14014922176
+	14014922320 [label=ConvolutionBackward0]
+	14014922464 -> 14014922320
+	14014922464 [label=ConvolutionBackward0]
+	14014922656 -> 14014922464
+	14014922656 [label=ConstantPadNdBackward0]
+	14014927008 -> 14014922656
+	14014927008 [label=PreluKernelBackward0]
+	14014927104 -> 14014927008
+	14014927104 [label=AddBackward0]
+	14014927248 -> 14014927104
+	14014927248 [label=ConvolutionBackward0]
+	14014927392 -> 14014927248
+	14014927392 [label=ConvolutionBackward0]
+	14014927200 -> 14014927392
+	14014927200 [label=PreluKernelBackward0]
+	14014927728 -> 14014927200
+	14014927728 [label=AddBackward0]
+	14014927872 -> 14014927728
+	14014927872 [label=ConvolutionBackward0]
+	14014928016 -> 14014927872
+	14014928016 [label=ConvolutionBackward0]
+	14014927824 -> 14014928016
+	14014927824 [label=PreluKernelBackward0]
+	14014928352 -> 14014927824
+	14014928352 [label=ConvolutionBackward0]
+	14014928496 -> 14014928352
+	14014928496 [label=ReflectionPad2DBackward0]
+	14014928688 -> 14014928496
+	14014928688 [label=UnsqueezeBackward0]
+	14014928784 -> 14014928688
+	14014928784 [label=PermuteBackward0]
+	14014928880 -> 14014928784
+	14014928880 [label=SubBackward0]
+	14014928976 -> 14014928880
+	14014928976 [label=DivBackward0]
+	14014929072 -> 14014928976
+	14014929072 [label=PermuteBackward0]
+	14014929168 -> 14014929072
+	14014929168 [label=SqueezeBackward1]
+	14014929264 -> 14014929168
+	14014929264 [label=ConstantPadNdBackward0]
+	14014929360 -> 14014929264
+	14014929360 [label=UnsqueezeBackward0]
+	14014929456 -> 14014929360
+	14014929456 [label=SqueezeBackward1]
+	14014929552 -> 14014929456
+	14014929552 [label=UpsampleBilinear2DBackward0]
+	14014929648 -> 14014929552
+	14014929648 [label=UnsqueezeBackward0]
+	14014929744 -> 14014929648
+	14014929744 [label=PermuteBackward0]
+	14014929840 -> 14014929744
+	13938548464 [label="
+ (282, 256, 3)" fillcolor=lightblue]
+	13938548464 -> 14014929840
+	14014929840 [label=AccumulateGrad]
+	14014928448 -> 14014928352
+	11689781184 [label="facelandmarker.backbone.0.weight
+ (16, 3, 3, 3)" fillcolor=lightblue]
+	11689781184 -> 14014928448
+	14014928448 [label=AccumulateGrad]
+	14014928400 -> 14014928352
+	11689781264 [label="facelandmarker.backbone.0.bias
+ (16)" fillcolor=lightblue]
+	11689781264 -> 14014928400
+	14014928400 [label=AccumulateGrad]
+	14014928304 -> 14014927824
+	14014928304 [label=ViewBackward0]
+	14014928736 -> 14014928304
+	11689780384 [label="facelandmarker.backbone.1.weight
+ (16)" fillcolor=lightblue]
+	11689780384 -> 14014928736
+	14014928736 [label=AccumulateGrad]
+	14014928208 -> 14014928016
+	11689779344 [label="facelandmarker.backbone.2.depthwiseconv_conv.0.weight
+ (16, 1, 3, 3)" fillcolor=lightblue]
+	11689779344 -> 14014928208
+	14014928208 [label=AccumulateGrad]
+	14014928160 -> 14014928016
+	11689779424 [label="facelandmarker.backbone.2.depthwiseconv_conv.0.bias
+ (16)" fillcolor=lightblue]
+	11689779424 -> 14014928160
+	14014928160 [label=AccumulateGrad]
+	14014927968 -> 14014927872
+	11689779504 [label="facelandmarker.backbone.2.depthwiseconv_conv.1.weight
+ (16, 16, 1, 1)" fillcolor=lightblue]
+	11689779504 -> 14014927968
+	14014927968 [label=AccumulateGrad]
+	14014927920 -> 14014927872
+	11689779584 [label="facelandmarker.backbone.2.depthwiseconv_conv.1.bias
+ (16)" fillcolor=lightblue]
+	11689779584 -> 14014927920
+	14014927920 [label=AccumulateGrad]
+	14014927824 -> 14014927728
+	14014927680 -> 14014927200
+	14014927680 [label=ViewBackward0]
+	14014928112 -> 14014927680
+	11689779664 [label="facelandmarker.backbone.2.prelu.weight
+ (16)" fillcolor=lightblue]
+	11689779664 -> 14014928112
+	14014928112 [label=AccumulateGrad]
+	14014927584 -> 14014927392
+	11689779904 [label="facelandmarker.backbone.3.depthwiseconv_conv.0.weight
+ (16, 1, 3, 3)" fillcolor=lightblue]
+	11689779904 -> 14014927584
+	14014927584 [label=AccumulateGrad]
+	14014927536 -> 14014927392
+	11689780944 [label="facelandmarker.backbone.3.depthwiseconv_conv.0.bias
+ (16)" fillcolor=lightblue]
+	11689780944 -> 14014927536
+	14014927536 [label=AccumulateGrad]
+	14014927344 -> 14014927248
+	11689781104 [label="facelandmarker.backbone.3.depthwiseconv_conv.1.weight
+ (16, 16, 1, 1)" fillcolor=lightblue]
+	11689781104 -> 14014927344
+	14014927344 [label=AccumulateGrad]
+	14014927296 -> 14014927248
+	11689780304 [label="facelandmarker.backbone.3.depthwiseconv_conv.1.bias
+ (16)" fillcolor=lightblue]
+	11689780304 -> 14014927296
+	14014927296 [label=AccumulateGrad]
+	14014927200 -> 14014927104
+	14014927056 -> 14014927008
+	14014927056 [label=ViewBackward0]
+	14014927488 -> 14014927056
+	11689780544 [label="facelandmarker.backbone.3.prelu.weight
+ (16)" fillcolor=lightblue]
+	11689780544 -> 14014927488
+	14014927488 [label=AccumulateGrad]
+	14014922608 -> 14014922464
+	11689780064 [label="facelandmarker.backbone.4.depthwiseconv_conv.0.weight
+ (16, 1, 3, 3)" fillcolor=lightblue]
+	11689780064 -> 14014922608
+	14014922608 [label=AccumulateGrad]
+	14014922560 -> 14014922464
+	13928669248 [label="facelandmarker.backbone.4.depthwiseconv_conv.0.bias
+ (16)" fillcolor=lightblue]
+	13928669248 -> 14014922560
+	14014922560 [label=AccumulateGrad]
+	14014922416 -> 14014922320
+	13928669328 [label="facelandmarker.backbone.4.depthwiseconv_conv.1.weight
+ (32, 16, 1, 1)" fillcolor=lightblue]
+	13928669328 -> 14014922416
+	14014922416 [label=AccumulateGrad]
+	14014922368 -> 14014922320
+	13928669408 [label="facelandmarker.backbone.4.depthwiseconv_conv.1.bias
+ (32)" fillcolor=lightblue]
+	13928669408 -> 14014922368
+	14014922368 [label=AccumulateGrad]
+	14014922272 -> 14014922176
+	14014922272 [label=ConstantPadNdBackward0]
+	14014922704 -> 14014922272
+	14014922704 [label=MaxPool2DWithIndicesBackward0]
+	14014927008 -> 14014922704
+	14014922128 -> 14014921648
+	14014922128 [label=ViewBackward0]
+	14014922512 -> 14014922128
+	13928669488 [label="facelandmarker.backbone.4.prelu.weight
+ (32)" fillcolor=lightblue]
+	13928669488 -> 14014922512
+	14014922512 [label=AccumulateGrad]
+	14014922032 -> 14014921840
+	13928669728 [label="facelandmarker.backbone.5.depthwiseconv_conv.0.weight
+ (32, 1, 3, 3)" fillcolor=lightblue]
+	13928669728 -> 14014922032
+	14014922032 [label=AccumulateGrad]
+	14014921984 -> 14014921840
+	13928669808 [label="facelandmarker.backbone.5.depthwiseconv_conv.0.bias
+ (32)" fillcolor=lightblue]
+	13928669808 -> 14014921984
+	14014921984 [label=AccumulateGrad]
+	14014921792 -> 14014921696
+	13928669888 [label="facelandmarker.backbone.5.depthwiseconv_conv.1.weight
+ (32, 32, 1, 1)" fillcolor=lightblue]
+	13928669888 -> 14014921792
+	14014921792 [label=AccumulateGrad]
+	14014921744 -> 14014921696
+	13928669968 [label="facelandmarker.backbone.5.depthwiseconv_conv.1.bias
+ (32)" fillcolor=lightblue]
+	13928669968 -> 14014921744
+	14014921744 [label=AccumulateGrad]
+	14014921648 -> 14014921552
+	14014921504 -> 14014921024
+	14014921504 [label=ViewBackward0]
+	14014921936 -> 14014921504
+	13928670048 [label="facelandmarker.backbone.5.prelu.weight
+ (32)" fillcolor=lightblue]
+	13928670048 -> 14014921936
+	14014921936 [label=AccumulateGrad]
+	14014921408 -> 14014921216
+	13928670288 [label="facelandmarker.backbone.6.depthwiseconv_conv.0.weight
+ (32, 1, 3, 3)" fillcolor=lightblue]
+	13928670288 -> 14014921408
+	14014921408 [label=AccumulateGrad]
+	14014921360 -> 14014921216
+	13928670368 [label="facelandmarker.backbone.6.depthwiseconv_conv.0.bias
+ (32)" fillcolor=lightblue]
+	13928670368 -> 14014921360
+	14014921360 [label=AccumulateGrad]
+	14014921168 -> 14014921072
+	13928670448 [label="facelandmarker.backbone.6.depthwiseconv_conv.1.weight
+ (32, 32, 1, 1)" fillcolor=lightblue]
+	13928670448 -> 14014921168
+	14014921168 [label=AccumulateGrad]
+	14014921120 -> 14014921072
+	13928670528 [label="facelandmarker.backbone.6.depthwiseconv_conv.1.bias
+ (32)" fillcolor=lightblue]
+	13928670528 -> 14014921120
+	14014921120 [label=AccumulateGrad]
+	14014921024 -> 14014920928
+	14014920880 -> 14014920832
+	14014920880 [label=ViewBackward0]
+	14014921312 -> 14014920880
+	13928670608 [label="facelandmarker.backbone.6.prelu.weight
+ (32)" fillcolor=lightblue]
+	13928670608 -> 14014921312
+	14014921312 [label=AccumulateGrad]
+	14014920592 -> 14014920448
+	13928670848 [label="facelandmarker.backbone.7.depthwiseconv_conv.0.weight
+ (32, 1, 3, 3)" fillcolor=lightblue]
+	13928670848 -> 14014920592
+	14014920592 [label=AccumulateGrad]
+	14014920544 -> 14014920448
+	13928670928 [label="facelandmarker.backbone.7.depthwiseconv_conv.0.bias
+ (32)" fillcolor=lightblue]
+	13928670928 -> 14014920544
+	14014920544 [label=AccumulateGrad]
+	14014920400 -> 14014920304
+	13928671008 [label="facelandmarker.backbone.7.depthwiseconv_conv.1.weight
+ (64, 32, 1, 1)" fillcolor=lightblue]
+	13928671008 -> 14014920400
+	14014920400 [label=AccumulateGrad]
+	14014920352 -> 14014920304
+	13928671088 [label="facelandmarker.backbone.7.depthwiseconv_conv.1.bias
+ (64)" fillcolor=lightblue]
+	13928671088 -> 14014920352
+	14014920352 [label=AccumulateGrad]
+	14014920256 -> 14014920160
+	14014920256 [label=ConstantPadNdBackward0]
+	14014920784 -> 14014920256
+	14014920784 [label=MaxPool2DWithIndicesBackward0]
+	14014920832 -> 14014920784
+	14014920112 -> 14014919632
+	14014920112 [label=ViewBackward0]
+	14014921264 -> 14014920112
+	13928671168 [label="facelandmarker.backbone.7.prelu.weight
+ (64)" fillcolor=lightblue]
+	13928671168 -> 14014921264
+	14014921264 [label=AccumulateGrad]
+	14014920016 -> 14014919824
+	13928671408 [label="facelandmarker.backbone.8.depthwiseconv_conv.0.weight
+ (64, 1, 3, 3)" fillcolor=lightblue]
+	13928671408 -> 14014920016
+	14014920016 [label=AccumulateGrad]
+	14014919968 -> 14014919824
+	13928671488 [label="facelandmarker.backbone.8.depthwiseconv_conv.0.bias
+ (64)" fillcolor=lightblue]
+	13928671488 -> 14014919968
+	14014919968 [label=AccumulateGrad]
+	14014919776 -> 14014919680
+	13928671568 [label="facelandmarker.backbone.8.depthwiseconv_conv.1.weight
+ (64, 64, 1, 1)" fillcolor=lightblue]
+	13928671568 -> 14014919776
+	14014919776 [label=AccumulateGrad]
+	14014919728 -> 14014919680
+	13928671648 [label="facelandmarker.backbone.8.depthwiseconv_conv.1.bias
+ (64)" fillcolor=lightblue]
+	13928671648 -> 14014919728
+	14014919728 [label=AccumulateGrad]
+	14014919632 -> 14014919536
+	14014919488 -> 14014919008
+	14014919488 [label=ViewBackward0]
+	14014919920 -> 14014919488
+	13928671728 [label="facelandmarker.backbone.8.prelu.weight
+ (64)" fillcolor=lightblue]
+	13928671728 -> 14014919920
+	14014919920 [label=AccumulateGrad]
+	14014919392 -> 14014919200
+	13928671968 [label="facelandmarker.backbone.9.depthwiseconv_conv.0.weight
+ (64, 1, 3, 3)" fillcolor=lightblue]
+	13928671968 -> 14014919392
+	14014919392 [label=AccumulateGrad]
+	14014919344 -> 14014919200
+	13928672048 [label="facelandmarker.backbone.9.depthwiseconv_conv.0.bias
+ (64)" fillcolor=lightblue]
+	13928672048 -> 14014919344
+	14014919344 [label=AccumulateGrad]
+	14014919152 -> 14014919056
+	13928672128 [label="facelandmarker.backbone.9.depthwiseconv_conv.1.weight
+ (64, 64, 1, 1)" fillcolor=lightblue]
+	13928672128 -> 14014919152
+	14014919152 [label=AccumulateGrad]
+	14014919104 -> 14014919056
+	13928672208 [label="facelandmarker.backbone.9.depthwiseconv_conv.1.bias
+ (64)" fillcolor=lightblue]
+	13928672208 -> 14014919104
+	14014919104 [label=AccumulateGrad]
+	14014919008 -> 14014918912
+	14014918864 -> 14014918816
+	14014918864 [label=ViewBackward0]
+	14014919296 -> 14014918864
+	13928672288 [label="facelandmarker.backbone.9.prelu.weight
+ (64)" fillcolor=lightblue]
+	13928672288 -> 14014919296
+	14014919296 [label=AccumulateGrad]
+	14014914416 -> 14014914272
+	13928672528 [label="facelandmarker.backbone.10.depthwiseconv_conv.0.weight
+ (64, 1, 3, 3)" fillcolor=lightblue]
+	13928672528 -> 14014914416
+	14014914416 [label=AccumulateGrad]
+	14014914368 -> 14014914272
+	13928672608 [label="facelandmarker.backbone.10.depthwiseconv_conv.0.bias
+ (64)" fillcolor=lightblue]
+	13928672608 -> 14014914368
+	14014914368 [label=AccumulateGrad]
+	14014914224 -> 14014914128
+	13928672688 [label="facelandmarker.backbone.10.depthwiseconv_conv.1.weight
+ (128, 64, 1, 1)" fillcolor=lightblue]
+	13928672688 -> 14014914224
+	14014914224 [label=AccumulateGrad]
+	14014914176 -> 14014914128
+	13928672768 [label="facelandmarker.backbone.10.depthwiseconv_conv.1.bias
+ (128)" fillcolor=lightblue]
+	13928672768 -> 14014914176
+	14014914176 [label=AccumulateGrad]
+	14014914080 -> 14014913984
+	14014914080 [label=ConstantPadNdBackward0]
+	14014914512 -> 14014914080
+	14014914512 [label=MaxPool2DWithIndicesBackward0]
+	14014918816 -> 14014914512
+	14014913936 -> 14014913456
+	14014913936 [label=ViewBackward0]
+	14014914320 -> 14014913936
+	13928672848 [label="facelandmarker.backbone.10.prelu.weight
+ (128)" fillcolor=lightblue]
+	13928672848 -> 14014914320
+	14014914320 [label=AccumulateGrad]
+	14014913840 -> 14014913648
+	13928673088 [label="facelandmarker.backbone.11.depthwiseconv_conv.0.weight
+ (128, 1, 3, 3)" fillcolor=lightblue]
+	13928673088 -> 14014913840
+	14014913840 [label=AccumulateGrad]
+	14014913792 -> 14014913648
+	13928673168 [label="facelandmarker.backbone.11.depthwiseconv_conv.0.bias
+ (128)" fillcolor=lightblue]
+	13928673168 -> 14014913792
+	14014913792 [label=AccumulateGrad]
+	14014913600 -> 14014913504
+	13935165504 [label="facelandmarker.backbone.11.depthwiseconv_conv.1.weight
+ (128, 128, 1, 1)" fillcolor=lightblue]
+	13935165504 -> 14014913600
+	14014913600 [label=AccumulateGrad]
+	14014913552 -> 14014913504
+	13935165584 [label="facelandmarker.backbone.11.depthwiseconv_conv.1.bias
+ (128)" fillcolor=lightblue]
+	13935165584 -> 14014913552
+	14014913552 [label=AccumulateGrad]
+	14014913456 -> 14014913360
+	14014913312 -> 14014912832
+	14014913312 [label=ViewBackward0]
+	14014913744 -> 14014913312
+	13935165664 [label="facelandmarker.backbone.11.prelu.weight
+ (128)" fillcolor=lightblue]
+	13935165664 -> 14014913744
+	14014913744 [label=AccumulateGrad]
+	14014913216 -> 14014913024
+	13935165904 [label="facelandmarker.backbone.12.depthwiseconv_conv.0.weight
+ (128, 1, 3, 3)" fillcolor=lightblue]
+	13935165904 -> 14014913216
+	14014913216 [label=AccumulateGrad]
+	14014913168 -> 14014913024
+	13935165984 [label="facelandmarker.backbone.12.depthwiseconv_conv.0.bias
+ (128)" fillcolor=lightblue]
+	13935165984 -> 14014913168
+	14014913168 [label=AccumulateGrad]
+	14014912976 -> 14014912880
+	13935166064 [label="facelandmarker.backbone.12.depthwiseconv_conv.1.weight
+ (128, 128, 1, 1)" fillcolor=lightblue]
+	13935166064 -> 14014912976
+	14014912976 [label=AccumulateGrad]
+	14014912928 -> 14014912880
+	13935166144 [label="facelandmarker.backbone.12.depthwiseconv_conv.1.bias
+ (128)" fillcolor=lightblue]
+	13935166144 -> 14014912928
+	14014912928 [label=AccumulateGrad]
+	14014912832 -> 14014912736
+	14014912688 -> 14014912640
+	14014912688 [label=ViewBackward0]
+	14014913120 -> 14014912688
+	13935166224 [label="facelandmarker.backbone.12.prelu.weight
+ (128)" fillcolor=lightblue]
+	13935166224 -> 14014913120
+	14014913120 [label=AccumulateGrad]
+	14014912400 -> 14014912256
+	13935166464 [label="facelandmarker.backbone.13.depthwiseconv_conv.0.weight
+ (128, 1, 3, 3)" fillcolor=lightblue]
+	13935166464 -> 14014912400
+	14014912400 [label=AccumulateGrad]
+	14014912352 -> 14014912256
+	13935166544 [label="facelandmarker.backbone.13.depthwiseconv_conv.0.bias
+ (128)" fillcolor=lightblue]
+	13935166544 -> 14014912352
+	14014912352 [label=AccumulateGrad]
+	14014912208 -> 14014912112
+	13935166624 [label="facelandmarker.backbone.13.depthwiseconv_conv.1.weight
+ (128, 128, 1, 1)" fillcolor=lightblue]
+	13935166624 -> 14014912208
+	14014912208 [label=AccumulateGrad]
+	14014912160 -> 14014912112
+	13935166704 [label="facelandmarker.backbone.13.depthwiseconv_conv.1.bias
+ (128)" fillcolor=lightblue]
+	13935166704 -> 14014912160
+	14014912160 [label=AccumulateGrad]
+	14014912064 -> 14014911968
+	14014912064 [label=MaxPool2DWithIndicesBackward0]
+	14014912640 -> 14014912064
+	14014911920 -> 14014911440
+	14014911920 [label=ViewBackward0]
+	14014912496 -> 14014911920
+	13935166784 [label="facelandmarker.backbone.13.prelu.weight
+ (128)" fillcolor=lightblue]
+	13935166784 -> 14014912496
+	14014912496 [label=AccumulateGrad]
+	14014911824 -> 14014911632
+	13935167024 [label="facelandmarker.backbone.14.depthwiseconv_conv.0.weight
+ (128, 1, 3, 3)" fillcolor=lightblue]
+	13935167024 -> 14014911824
+	14014911824 [label=AccumulateGrad]
+	14014911776 -> 14014911632
+	13935167104 [label="facelandmarker.backbone.14.depthwiseconv_conv.0.bias
+ (128)" fillcolor=lightblue]
+	13935167104 -> 14014911776
+	14014911776 [label=AccumulateGrad]
+	14014911584 -> 14014911488
+	13935167184 [label="facelandmarker.backbone.14.depthwiseconv_conv.1.weight
+ (128, 128, 1, 1)" fillcolor=lightblue]
+	13935167184 -> 14014911584
+	14014911584 [label=AccumulateGrad]
+	14014911536 -> 14014911488
+	13935167264 [label="facelandmarker.backbone.14.depthwiseconv_conv.1.bias
+ (128)" fillcolor=lightblue]
+	13935167264 -> 14014911536
+	14014911536 [label=AccumulateGrad]
+	14014911440 -> 14014911344
+	14014911296 -> 14014910816
+	14014911296 [label=ViewBackward0]
+	14014911728 -> 14014911296
+	13935167344 [label="facelandmarker.backbone.14.prelu.weight
+ (128)" fillcolor=lightblue]
+	13935167344 -> 14014911728
+	14014911728 [label=AccumulateGrad]
+	14014911200 -> 14014911008
+	13935167584 [label="facelandmarker.backbone.15.depthwiseconv_conv.0.weight
+ (128, 1, 3, 3)" fillcolor=lightblue]
+	13935167584 -> 14014911200
+	14014911200 [label=AccumulateGrad]
+	14014911152 -> 14014911008
+	13935167664 [label="facelandmarker.backbone.15.depthwiseconv_conv.0.bias
+ (128)" fillcolor=lightblue]
+	13935167664 -> 14014911152
+	14014911152 [label=AccumulateGrad]
+	14014910960 -> 14014910864
+	13935167744 [label="facelandmarker.backbone.15.depthwiseconv_conv.1.weight
+ (128, 128, 1, 1)" fillcolor=lightblue]
+	13935167744 -> 14014910960
+	14014910960 [label=AccumulateGrad]
+	14014910912 -> 14014910864
+	13935167824 [label="facelandmarker.backbone.15.depthwiseconv_conv.1.bias
+ (128)" fillcolor=lightblue]
+	13935167824 -> 14014910912
+	14014910912 [label=AccumulateGrad]
+	14014910816 -> 14014910720
+	14014910672 -> 14014910624
+	14014910672 [label=ViewBackward0]
+	14014911104 -> 14014910672
+	13935167904 [label="facelandmarker.backbone.15.prelu.weight
+ (128)" fillcolor=lightblue]
+	13935167904 -> 14014911104
+	14014911104 [label=AccumulateGrad]
+	14014453648 -> 14014453024
+	13935168144 [label="facelandmarker.confidence.0.depthwiseconv_conv.0.weight
+ (128, 1, 3, 3)" fillcolor=lightblue]
+	13935168144 -> 14014453648
+	14014453648 [label=AccumulateGrad]
+	14014453696 -> 14014453024
+	13935168224 [label="facelandmarker.confidence.0.depthwiseconv_conv.0.bias
+ (128)" fillcolor=lightblue]
+	13935168224 -> 14014453696
+	14014453696 [label=AccumulateGrad]
+	14014453456 -> 14014452304
+	13935168304 [label="facelandmarker.confidence.0.depthwiseconv_conv.1.weight
+ (128, 128, 1, 1)" fillcolor=lightblue]
+	13935168304 -> 14014453456
+	14014453456 [label=AccumulateGrad]
+	14014452592 -> 14014452304
+	13935168384 [label="facelandmarker.confidence.0.depthwiseconv_conv.1.bias
+ (128)" fillcolor=lightblue]
+	13935168384 -> 14014452592
+	14014452592 [label=AccumulateGrad]
+	14014452208 -> 14014816208
+	14014452208 [label=MaxPool2DWithIndicesBackward0]
+	14014910624 -> 14014452208
+	14014816160 -> 14014815632
+	14014816160 [label=ViewBackward0]
+	14014453600 -> 14014816160
+	13935168464 [label="facelandmarker.confidence.0.prelu.weight
+ (128)" fillcolor=lightblue]
+	13935168464 -> 14014453600
+	14014453600 [label=AccumulateGrad]
+	14014816064 -> 14014815872
+	13935168704 [label="facelandmarker.confidence.1.depthwiseconv_conv.0.weight
+ (128, 1, 3, 3)" fillcolor=lightblue]
+	13935168704 -> 14014816064
+	14014816064 [label=AccumulateGrad]
+	14014816016 -> 14014815872
+	13935168784 [label="facelandmarker.confidence.1.depthwiseconv_conv.0.bias
+ (128)" fillcolor=lightblue]
+	13935168784 -> 14014816016
+	14014816016 [label=AccumulateGrad]
+	14014815824 -> 14014815728
+	13935168864 [label="facelandmarker.confidence.1.depthwiseconv_conv.1.weight
+ (128, 128, 1, 1)" fillcolor=lightblue]
+	13935168864 -> 14014815824
+	14014815824 [label=AccumulateGrad]
+	14014815776 -> 14014815728
+	13935168944 [label="facelandmarker.confidence.1.depthwiseconv_conv.1.bias
+ (128)" fillcolor=lightblue]
+	13935168944 -> 14014815776
+	14014815776 [label=AccumulateGrad]
+	14014815632 -> 14014815536
+	14014815488 -> 14014815008
+	14014815488 [label=ViewBackward0]
+	14014815968 -> 14014815488
+	13935169024 [label="facelandmarker.confidence.1.prelu.weight
+ (128)" fillcolor=lightblue]
+	13935169024 -> 14014815968
+	14014815968 [label=AccumulateGrad]
+	14014815392 -> 14014815200
+	13935169264 [label="facelandmarker.confidence.2.depthwiseconv_conv.0.weight
+ (128, 1, 3, 3)" fillcolor=lightblue]
+	13935169264 -> 14014815392
+	14014815392 [label=AccumulateGrad]
+	14014815344 -> 14014815200
+	13935169344 [label="facelandmarker.confidence.2.depthwiseconv_conv.0.bias
+ (128)" fillcolor=lightblue]
+	13935169344 -> 14014815344
+	14014815344 [label=AccumulateGrad]
+	14014815152 -> 14014815056
+	13935169424 [label="facelandmarker.confidence.2.depthwiseconv_conv.1.weight
+ (128, 128, 1, 1)" fillcolor=lightblue]
+	13935169424 -> 14014815152
+	14014815152 [label=AccumulateGrad]
+	14014815104 -> 14014815056
+	13935378496 [label="facelandmarker.confidence.2.depthwiseconv_conv.1.bias
+ (128)" fillcolor=lightblue]
+	13935378496 -> 14014815104
+	14014815104 [label=AccumulateGrad]
+	14014815008 -> 14014814912
+	14014814864 -> 14014814720
+	14014814864 [label=ViewBackward0]
+	14014815296 -> 14014814864
+	13935378576 [label="facelandmarker.confidence.2.prelu.weight
+ (128)" fillcolor=lightblue]
+	13935378576 -> 14014815296
+	14014815296 [label=AccumulateGrad]
+	14014814672 -> 14014814576
+	13935378736 [label="facelandmarker.confidence.3.weight
+ (32, 128, 1, 1)" fillcolor=lightblue]
+	13935378736 -> 14014814672
+	14014814672 [label=AccumulateGrad]
+	14014814624 -> 14014814576
+	13935378816 [label="facelandmarker.confidence.3.bias
+ (32)" fillcolor=lightblue]
+	13935378816 -> 14014814624
+	14014814624 [label=AccumulateGrad]
+	14014814528 -> 14014814048
+	14014814528 [label=ViewBackward0]
+	14014815248 -> 14014814528
+	13935378896 [label="facelandmarker.confidence.4.weight
+ (32)" fillcolor=lightblue]
+	13935378896 -> 14014815248
+	14014815248 [label=AccumulateGrad]
+	14014814432 -> 14014814240
+	13935379136 [label="facelandmarker.confidence.5.depthwiseconv_conv.0.weight
+ (32, 1, 3, 3)" fillcolor=lightblue]
+	13935379136 -> 14014814432
+	14014814432 [label=AccumulateGrad]
+	14014814384 -> 14014814240
+	13935379216 [label="facelandmarker.confidence.5.depthwiseconv_conv.0.bias
+ (32)" fillcolor=lightblue]
+	13935379216 -> 14014814384
+	14014814384 [label=AccumulateGrad]
+	14014814192 -> 14014814096
+	13935379296 [label="facelandmarker.confidence.5.depthwiseconv_conv.1.weight
+ (32, 32, 1, 1)" fillcolor=lightblue]
+	13935379296 -> 14014814192
+	14014814192 [label=AccumulateGrad]
+	14014814144 -> 14014814096
+	13935379376 [label="facelandmarker.confidence.5.depthwiseconv_conv.1.bias
+ (32)" fillcolor=lightblue]
+	13935379376 -> 14014814144
+	14014814144 [label=AccumulateGrad]
+	14014814048 -> 14014813952
+	14014813904 -> 14014813760
+	14014813904 [label=ViewBackward0]
+	14014814336 -> 14014813904
+	13935379456 [label="facelandmarker.confidence.5.prelu.weight
+ (32)" fillcolor=lightblue]
+	13935379456 -> 14014814336
+	14014814336 [label=AccumulateGrad]
+	14014813712 -> 14014813664
+	13935379616 [label="facelandmarker.confidence.6.weight
+ (1404, 32, 3, 3)" fillcolor=lightblue]
+	13935379616 -> 14014813712
+	14014813712 [label=AccumulateGrad]
+	14014812944 -> 14014813664
+	13935379696 [label="facelandmarker.confidence.6.bias
+ (1404)" fillcolor=lightblue]
+	13935379696 -> 14014812944
+	14014812944 [label=AccumulateGrad]
+	14014812896 -> 14014812224
+	14014812896 [label=AsStridedBackward0]
+	14014813424 -> 14014812896
+	14014813424 [label=CopySlices]
+	14014813616 -> 14014813424
+	14014813616 [label=CopySlices]
+	14014814288 -> 14014813616
+	14014814288 [label=CopySlices]
+	14014814000 -> 14014814288
+	14014814000 [label=CopySlices]
+	14014814768 -> 14014814000
+	14014814768 [label=ConvolutionBackward0]
+	14014815584 -> 14014814768
+	13936347792 [label="irislandmarker.iris_contour.8.weight
+ (15, 128, 2, 2)" fillcolor=lightblue]
+	13936347792 -> 14014815584
+	14014815584 [label=AccumulateGrad]
+	14014816112 -> 14014814768
+	13936347872 [label="irislandmarker.iris_contour.8.bias
+ (15)" fillcolor=lightblue]
+	13936347872 -> 14014816112
+	14014816112 [label=AccumulateGrad]
+	14014815920 -> 14014814000
+	14014815920 [label=SubBackward0]
+	14014452064 -> 14014815920
+	14014452064 [label=SelectBackward0]
+	14014814960 -> 14014452064
+	14014814960 [label=SliceBackward0]
+	14014911680 -> 14014814960
+	14014911680 [label=ViewBackward0]
+	14014910768 -> 14014911680
+	14014910768 [label=ViewBackward0]
+	14014911872 -> 14014910768
+	14014911872 [label=ViewBackward0]
+	14014814768 -> 14014911872
+	14014814480 -> 14014814288
+	14014814480 [label=AddBackward0]
+	14014453216 -> 14014814480
+	14014453216 [label=MulBackward0]
+	14014911248 -> 14014453216
+	14014911248 [label=SelectBackward0]
+	14014912544 -> 14014911248
+	14014912544 [label=SliceBackward0]
+	14014910528 -> 14014912544
+	14014910528 [label=AsStridedBackward0]
+	14014814000 -> 14014910528
+	14014813856 -> 14014813616
+	14014813856 [label=SubBackward0]
+	14014815440 -> 14014813856
+	14014815440 [label=SelectBackward0]
+	14014911392 -> 14014815440
+	14014911392 [label=SliceBackward0]
+	14014912304 -> 14014911392
+	14014912304 [label=AsStridedBackward0]
+	14014814288 -> 14014912304
+	14014813520 -> 14014813424
+	14014813520 [label=AddBackward0]
+	14014814816 -> 14014813520
+	14014814816 [label=MulBackward0]
+	14014913072 -> 14014814816
+	14014913072 [label=SelectBackward0]
+	14014911056 -> 14014913072
+	14014911056 [label=SliceBackward0]
+	14014913264 -> 14014911056
+	14014913264 [label=AsStridedBackward0]
+	14014813616 -> 14014913264
+	14014813280 -> 14014812224
+	14014813280 [label=AsStridedBackward0]
+	14014813808 -> 14014813280
+	14014813808 [label=CopySlices]
+	14014813328 -> 14014813808
+	14014813328 [label=CopySlices]
+	14014912784 -> 14014813328
+	14014912784 [label=CopySlices]
+	14014913408 -> 14014912784
+	14014913408 [label=CopySlices]
+	14014919872 -> 14014913408
+	14014919872 [label=ConvolutionBackward0]
+	14014815584 -> 14014919872
+	14014816112 -> 14014919872
+	14014919248 -> 14014913408
+	14014919248 [label=SubBackward0]
+	14014919440 -> 14014919248
+	14014919440 [label=SelectBackward0]
+	14014919584 -> 14014919440
+	14014919584 [label=SliceBackward0]
+	14014920736 -> 14014919584
+	14014920736 [label=ViewBackward0]
+	14014921888 -> 14014920736
+	14014921888 [label=ViewBackward0]
+	14014920976 -> 14014921888
+	14014920976 [label=ViewBackward0]
+	14014919872 -> 14014920976
+	14014912592 -> 14014912784
+	14014912592 [label=AddBackward0]
+	14014920064 -> 14014912592
+	14014920064 [label=MulBackward0]
+	14014920208 -> 14014920064
+	14014920208 [label=SelectBackward0]
+	14014922080 -> 14014920208
+	14014922080 [label=SliceBackward0]
+	14014920688 -> 14014922080
+	14014920688 [label=AsStridedBackward0]
+	14014913408 -> 14014920688
+	14014913888 -> 14014813328
+	14014913888 [label=SubBackward0]
+	14014920496 -> 14014913888
+	14014920496 [label=SelectBackward0]
+	14014922224 -> 14014920496
+	14014922224 [label=SliceBackward0]
+	14014918720 -> 14014922224
+	14014918720 [label=AsStridedBackward0]
+	14014912784 -> 14014918720
+	14014910576 -> 14014813808
+	14014910576 [label=AddBackward0]
+	14014913696 -> 14014910576
+	14014913696 [label=MulBackward0]
+	14014918768 -> 14014913696
+	14014918768 [label=SelectBackward0]
+	14014918960 -> 14014918768
+	14014918960 [label=SliceBackward0]
+	14014928064 -> 14014918960
+	14014928064 [label=AsStridedBackward0]
+	14014813328 -> 14014928064
+	14014813184 -> 14014812272
+	14014813184 [label=DivBackward0]
+	14014912016 -> 14014813184
+	14014912016 [label=SelectBackward0]
+	14014921600 -> 14014912016
+	14014921600 [label=SliceBackward0]
+	14014812224 -> 14014921600
+	14014812320 -> 14014767056
+	14014812320 [label=DivBackward0]
+	14014921456 -> 14014812320
+	14014921456 [label=SelectBackward0]
+	14014813232 -> 14014921456
+	14014813232 [label=SliceBackward0]
+	14014812272 -> 14014813232
+	14014766480 -> 14014767008
+	14014766480 [label=DivBackward0]
+	14014813040 -> 14014766480
+	14014813040 [label=SelectBackward0]
+	14014812464 -> 14014813040
+	14014812464 [label=SliceBackward0]
+	14014767056 -> 14014812464
+	14014764848 -> 13960867408
+	14014764848 [label=DivBackward0]
+	14014812848 -> 14014764848
+	14014812848 [label=SelectBackward0]
+	14014927440 -> 14014812848
+	14014927440 [label=SliceBackward0]
+	14014767008 -> 14014927440
+	13960865440 -> 14014428352
+	13960865440 [label=DivBackward0]
+	14014812512 -> 13960865440
+	14014812512 [label=SelectBackward0]
+	14014927152 -> 14014812512
+	14014927152 [label=SliceBackward0]
+	13960867408 -> 14014927152
+	14014428352 -> 13943890704
 }
