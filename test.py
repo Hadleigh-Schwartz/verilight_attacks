@@ -14,6 +14,7 @@ import numpy as np
 from hadleigh_utils import pad_image, get_real_mediapipe_results
 import matplotlib.pyplot as plt
 import pandas as pd
+from mp_alignment import align_landmarks
 
 sys.path.append("facenet-pytorch")
 from models.mtcnn import MTCNN
@@ -50,7 +51,7 @@ class PyTorchMediapipeFaceMesh(nn.Module):
         Detects face in image using MTCNN and returns cropped face tensor
 
         Parameters:
-            img: torch.Tensor
+            img: torch.Tensor H x W x 3
                 The image to detect the face in
             padding: int
                 The amount of padding to add around the detected face
@@ -60,6 +61,8 @@ class PyTorchMediapipeFaceMesh(nn.Module):
                 Image cropped to detected face
         """
         bboxes, probs = self.mtcnn.detect(img)
+        if bboxes.shape[0] == 0: # if no face detected
+            return torch.zeros(img.shape, dtype=torch.float32)
         bbox = bboxes[0]
         bbox = bbox + [-padding, -padding, padding, padding] # add padding to the bbox, based on observation that mediapipe landmarks extractor benefits from this
         x1, y1, x2, y2 = bbox.astype(int)
@@ -263,7 +266,7 @@ class PyTorchMediapipeFaceMesh(nn.Module):
 
         return iris_landmarks
 
-    def compare_to_real_mediapipe(self, landmarks, blendshapes, padded_face):
+    def compare_to_real_mediapipe(self, landmarks, blendshapes, padded_face, save_landmark_comparison = False, live_demo = False):
         """
 
         Parameters:
@@ -285,21 +288,22 @@ class PyTorchMediapipeFaceMesh(nn.Module):
         # now convert padded_face to BGR for below opencv stuff
         padded_face = cv2.cvtColor(padded_face, cv2.COLOR_RGB2BGR)
 
-        # make blown up visualization of landmarks for comparison of all 478
-        scaled_real_mp_landmarks = real_mp_landmarks[:, :2] * 35
-        scaled_landmarks = landmarks[:, :2]* 35
-        blank = np.ones((6000, 6000, 3), dtype=np.uint8) * 255
-        for i in range(scaled_real_mp_landmarks.shape[0]):
-            coord = scaled_real_mp_landmarks[i, :]
-            x, y = coord[0], coord[1]
-            cv2.circle(blank, (int(x), int(y)), 3, (0, 255, 0), -1)
-            cv2.putText(blank, "Real" + str(i), (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
-        for i in range(scaled_landmarks.shape[0]):
-            coord = scaled_landmarks[i, :]
-            x, y = coord[0], coord[1]
-            cv2.circle(blank, (int(x), int(y)), 3, (0, 0, 255), -1)
-            cv2.putText(blank, "Our Model" + str(i), (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
-        cv2.imwrite("landmarks_comparison.png", blank)
+        if save_landmark_comparison:
+            # make blown up visualization of landmarks for comparison of all 478
+            scaled_real_mp_landmarks = real_mp_landmarks[:, :2] * 35
+            scaled_landmarks = landmarks[:, :2]* 35
+            blank = np.ones((6000, 6000, 3), dtype=np.uint8) * 255
+            for i in range(scaled_real_mp_landmarks.shape[0]):
+                coord = scaled_real_mp_landmarks[i, :]
+                x, y = coord[0], coord[1]
+                cv2.circle(blank, (int(x), int(y)), 3, (0, 255, 0), -1)
+                cv2.putText(blank, "Real" + str(i), (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+            for i in range(scaled_landmarks.shape[0]):
+                coord = scaled_landmarks[i, :]
+                x, y = coord[0], coord[1]
+                cv2.circle(blank, (int(x), int(y)), 3, (0, 0, 255), -1)
+                cv2.putText(blank, "Our Model" + str(i), (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+            cv2.imwrite("landmarks_comparison.png", blank)
 
         # create bar plots for the blendshapes
         plt.style.use('ggplot')
@@ -353,21 +357,34 @@ class PyTorchMediapipeFaceMesh(nn.Module):
 
         img = np.hstack((annotated_face_ours, annotated_face_real, fig_arr))
         cv2.imshow("Final Comp", img)
-        cv2.waitKey(0)
+        if live_demo:
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                return
+        else:
+            cv2.waitKey(0)
 
     def forward(self, img_tensor):
+        """
+        Parameters:
+        img_tensor: torch.Tensor
+            Image tensor, H x W x 3, RGB
+        """
         # Note: detect_face uses with torch.no_grad() internally. Is that a problem?
         face = self.detect_face(img_tensor)
-        print("Face detect grad: " , face.grad_fn)
+
+        # check if face is all zeros, which indicates no face was detected
+        if torch.all(face == 0):
+            landmarks_zeroes = torch.zeros(478, 3)
+            blendshapes_zeroes = torch.zeros(52)
+            face_zeroes = torch.zeros_like(img_tensor)
+            return landmarks_zeroes, blendshapes_zeroes, face_zeroes
+
         proc_face = self.preprocess_face_for_landmark_detection(face)
-        print("Proc face grad: " , proc_face.grad_fn)
 
         # run facial landmark detection
         facial_landmarks, confidence = self.facelandmarker.predict(proc_face) # predict
-        print("Facial landmarks grad: " , facial_landmarks.grad_fn)
         facial_landmarks = facial_landmarks[0, :, :, :] # assume there is only one face in the image, so take the first set of landmarks
         facial_landmarks = facial_landmarks.view(468, 3)
-        print("Facial landmarks grad: " , facial_landmarks.grad_fn)
         
         # only for visualization
         padded_face = self.unnormalize_face(proc_face) # undo normalization and permutation applied for facial landmark detection, but leave the padding it added
@@ -379,7 +396,6 @@ class PyTorchMediapipeFaceMesh(nn.Module):
    
         left_eye_crop = padded_face[int(left_eye_top):int(left_eye_bottom), int(left_eye_left):int(left_eye_right), :]
         right_eye_crop = padded_face[int(right_eye_top):int(right_eye_bottom), int(right_eye_left):int(right_eye_right), :]
-        print("Left eye crop grad: " , left_eye_crop.grad_fn, "Right eye crop grad: " , right_eye_crop.grad_fn)
 
         # debugging only
         # vis_eye_cropping(padded_face, facial_landmarks, (right_eye_left, right_eye_right, right_eye_top, right_eye_bottom), (left_eye_left, left_eye_right, left_eye_top, left_eye_bottom))
@@ -387,14 +403,12 @@ class PyTorchMediapipeFaceMesh(nn.Module):
         # pad the eye crops
         proc_left_eye_crop = self.preprocess_eye_for_landmark_detection(left_eye_crop)
         proc_right_eye_crop = self.preprocess_eye_for_landmark_detection(right_eye_crop)
-        print("Proc left eye crop grad: " , proc_left_eye_crop.grad_fn, "Proc right eye crop grad: " , proc_right_eye_crop.grad_fn)
 
         # run iris detection
         left_eye_contour_landmarks, left_iris_landmarks = self.irislandmarker.predict(proc_left_eye_crop)
         right_eye_contour_landmarks, right_iris_landmarks = self.irislandmarker.predict(proc_right_eye_crop)
         left_iris_landmarks = left_iris_landmarks.view(5, 3)
         right_iris_landmarks = right_iris_landmarks.view(5, 3)
-        print("Left iris landmarks grad: " , left_iris_landmarks.grad_fn, "Right iris landmarks grad: " , right_iris_landmarks.grad_fn)
 
         # debugging only
         # padded_left_eye = unnormalize_eye(proc_left_eye_crop)
@@ -405,7 +419,6 @@ class PyTorchMediapipeFaceMesh(nn.Module):
         # adjust the iris landmarks to the original image pixel space
         left_iris_landmarks = self.iris_landmarks_to_original_pixel_space(left_iris_landmarks, (left_eye_left, left_eye_right, left_eye_top, left_eye_bottom), (left_eye_width, left_eye_height))
         right_iris_landmarks = self.iris_landmarks_to_original_pixel_space(right_iris_landmarks, (right_eye_left, right_eye_right, right_eye_top, right_eye_bottom), (right_eye_width, right_eye_height))
-        print("Left iris landmarks original space grad: " , left_iris_landmarks.grad_fn, "Right iris landmarks original space grad: " , right_iris_landmarks.grad_fn)
 
         # only for visualization
         # self.vis_iris_landmarks_on_face(padded_face, left_iris_landmarks)
@@ -428,33 +441,96 @@ class PyTorchMediapipeFaceMesh(nn.Module):
         # with torch.no_grad(): # is this necessary or strictly not allowed?
         blendshapes = self.blendshape_model(blendshape_input)
         blendshapes = blendshapes.squeeze()
-        print("Blendshapes grad: " , blendshapes.grad_fn)
         return all_landmarks, blendshapes, padded_face
+
+class VeriLightDynamicFeatures(nn.Module):
+    def __init__(self):
+        super(VeriLightDynamicFeatures, self).__init__()
+        self.mp = PyTorchMediapipeFaceMesh()
+    
+    def forward(self, video_tensor):
+        for i in range(video_tensor.shape[0]):
+            frame = video_tensor[i, :, :, :]
+            landmarks, blendshapes, padded_face = self.mp(frame)
+            print(landmarks.grad_fn, blendshapes.grad_fn)
+           
+def record_video():
+    """
+    Record and save a video on the webcam. Testing purposes
+    """
+    cap = cv2.VideoCapture(0)
+    fourcc = cv2.VideoWriter_fourcc("M", "J", "P", "G")
+    # out = cv2.VideoWriter('output.avi', fourcc, 20.0, (640, 480))
+    out = None
+    num_frames = 100
+    count = 0
+    while True:
+        ret, img = cap.read()
+        if not ret:
+            break
+        count += 1
+        if count < 4:
+            continue
+        if out is None:
+            out = cv2.VideoWriter('test_video.mp4', fourcc, 20.0, (img.shape[1], img.shape[0]))
+        out.write(img)
+        if count == num_frames:
+            break
+    out.release()
+    cap.release()
+
 
 mp = PyTorchMediapipeFaceMesh()
 
+# vl = VeriLightDynamicFeatures()
+# # validation on video
+# cap = cv2.VideoCapture("test_video.mp4")
+# # read video in as a tensor of shape (frames, H, W, 3), RGB order
+# frames = []
+# while True:
+#     ret, img = cap.read()
+#     if not ret:
+#         break
+#     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+#     img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = True)
+#     frames.append(img_tensor)
+# frames = torch.stack(frames)
+# print(frames.shape)
+# vl(frames)
+# print(landmarks.shape, blendshapes.shape, padded_face.shape)
+# print(landmarks.grad_fn, blendshapes.grad_fn)
+
+# validation on image
 img_path = "obama2.jpeg"
 img = cv2.imread(img_path)
 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = True) # emulate format that will be output by generator
 landmarks, blendshapes, padded_face = mp(img_tensor)
 print(landmarks.grad_fn, blendshapes.grad_fn)
-
 padded_face = padded_face.detach().numpy().astype(np.uint8)
 landmarks_np = landmarks.detach().numpy()
 blendshapes_np = blendshapes.detach().numpy()
 mp.compare_to_real_mediapipe(landmarks_np, blendshapes_np, padded_face)
+W = torch.tensor(padded_face.shape[1])
+H = torch.tensor(padded_face.shape[0])
+align_landmarks(landmarks, W, H, W, H)
 
-
+# webcam live demo
 # cap = cv2.VideoCapture(0)
 # count = 0
-# img_path = "curr.jpg"
-# ret, img = cap.read()
-# if not ret:
-#     break
-# count += 1
-# if count < 4:
-#     continue
-# save as curr.jpg
-# cv2.imwrite(img_path, img)
+# while True:
+#     ret, img = cap.read()
+#     if not ret:
+#         break
+#     count += 1
+#     if count < 4:
+#         continue
+#     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+#     img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = False)
+#     landmarks, blendshapes, padded_face = mp(img_tensor)
+#     padded_face = padded_face.detach().numpy().astype(np.uint8)
+#     landmarks_np = landmarks.detach().numpy()
+#     blendshapes_np = blendshapes.detach().numpy()
+#     mp.compare_to_real_mediapipe(landmarks_np, blendshapes_np, padded_face, live_demo = True)
+
 
