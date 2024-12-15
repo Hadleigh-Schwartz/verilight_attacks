@@ -1,4 +1,4 @@
-# A differentiable, pytorch version of functions in deepfake_detection/systsem/e2e/common/mp_alignment.py
+# A differentiable, pytorch version of face landmarker alignment to a canonical view (mp_alignment_original.py).
 #
 # The original version of this code (non-pytorch version) contained many parts from the cpp implementation from github.com/google/mediapipe
 #

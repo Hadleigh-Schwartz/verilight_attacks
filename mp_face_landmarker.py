@@ -156,56 +156,84 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
         so unlike the resource above I also consider the eyebrow landmarks when determining the boundaries for the eye crop.
         I will add 0.25*width to the left and right, and .25*height to the top and bottom of the eye crop."""
         
-        rightEyeUpper0_ids = [246, 161, 160, 159, 158, 157, 173] # landmark indices for the upper eye contour of the right eye
-        rightEyeLower0_ids = [33, 7, 163, 144, 145, 153, 154, 155, 133]
-        rightEyebrowUpper_ids =  [156, 70, 63, 105, 66, 107, 55, 193]
-        rightEyebrowLower_ids =  [35, 124, 46, 53, 52, 65]
-
-        leftEyeUpper0_ids = [466, 388, 387, 386, 385, 384, 398] # landmark indices for the upper eye contour of the left eye
-        leftEyeLower0_ids = [263, 249, 390, 373, 374, 380, 381, 382, 362]
-        leftEyebrowUpper_ids =  [383, 300, 293, 334, 296, 336, 285, 417]
-        leftEyebrowLower_ids = [265, 353, 276, 283, 282, 295]
-
-        rightEyeUpper0 = facial_landmarks[rightEyeUpper0_ids, :] # get the relevant eye landmark coordinates 
-        rightEyeLower0 = facial_landmarks[rightEyeLower0_ids, :]
-        rightEyebrowLower = facial_landmarks[rightEyebrowLower_ids, :]
-        rightEyebrowUpper = facial_landmarks[rightEyebrowUpper_ids, :]
-        right_eye_all = torch.cat([rightEyeUpper0, rightEyeLower0], dim=0)
-
-        leftEyeUpper0 = facial_landmarks[leftEyeUpper0_ids, :]
-        leftEyeLower0 = facial_landmarks[leftEyeLower0_ids, :]
-        leftEyebrowLower = facial_landmarks[leftEyebrowLower_ids, :]
-        leftEyebrowUpper = facial_landmarks[leftEyebrowUpper_ids, :]
-        left_eye_all = torch.cat([leftEyeUpper0, leftEyeLower0], dim=0)
-
+        # this resources https://github.com/google-ai-edge/mediapipe/blob/ab1de4fced96c18b79eda4ab407b04eb08301ea4/mediapipe/graphs/iris_tracking/iris_tracking_cpu.pbtxt
+        # considers 33 and 133 as denoting the boundaries of the left eye, and 263 and 362 as the right
+        # i think it then sets the height equal to the width as computed by only these two guys. Let's try this.
+        right_eye_ids = [362, 263]
+        left_eye_ids = [33, 133]
         if eye == "right":
-            # eye_left = rightEyeUpper0[:, 0].min().item()
-            # eye_right = rightEyeUpper0[:, 0].max().item()
-            # eye_top = rightEyeUpper0[:, 1].min().item()
-            # eye_bottom = rightEyeLower0[:, 1].max().item()
-            eye_left = right_eye_all[:, 0].min().item()
-            eye_right = right_eye_all[:, 0].max().item()
-            eye_top = right_eye_all[:, 1].min().item()
-            eye_bottom = right_eye_all[:, 1].max().item()
-        else:
-            # eye_left = leftEyeUpper0[:, 0].min().item()
-            # eye_right = leftEyeUpper0[:, 0].max().item()
-            # eye_top = leftEyeUpper0[:, 1].min().item()
-            # eye_bottom = leftEyeLower0[:, 1].max().item()
-            eye_left = left_eye_all[:, 0].min().item()
-            eye_right = left_eye_all[:, 0].max().item()
-            eye_top = left_eye_all[:, 1].min().item()
-            eye_bottom = left_eye_all[:, 1].max().item()
-
+            eye_left = facial_landmarks[right_eye_ids[0], 0].item()
+            eye_right = facial_landmarks[right_eye_ids[1], 0].item()
+            eye_top = facial_landmarks[right_eye_ids, 1].min().item()
+            eye_bottom = facial_landmarks[right_eye_ids, 1].max().item()    
+        if eye == "left":
+            eye_left = facial_landmarks[left_eye_ids[0], 0].item()
+            eye_right = facial_landmarks[left_eye_ids[1], 0].item()
+            eye_top = facial_landmarks[left_eye_ids, 1].min().item()
+            eye_bottom = facial_landmarks[left_eye_ids, 1].max().item()
         eye_width = eye_right - eye_left
-        horizontal_margin = 0.25 * eye_width
+        horizontal_margin = 0.25 * eye_width 
         eye_left -= horizontal_margin
         eye_right += horizontal_margin
+        eye_top -= eye_width // 2
+        eye_top -= horizontal_margin
+        eye_bottom += eye_width // 2
+        eye_bottom += horizontal_margin
+        eye_width = eye_width + 2*horizontal_margin
+        eye_height = eye_width
+            
 
-        eye_height = eye_bottom - eye_top
-        vertical_margin = .6 * eye_height 
-        eye_top -= vertical_margin
-        eye_bottom += vertical_margin
+        # og mediapipe stuff
+        # rightEyeUpper0_ids = [246, 161, 160, 159, 158, 157, 173] # landmark indices for the upper eye contour of the right eye
+        # rightEyeLower0_ids = [33, 7, 163, 144, 145, 153, 154, 155, 133]
+        # rightEyebrowUpper_ids =  [156, 70, 63, 105, 66, 107, 55, 193]
+        # rightEyebrowLower_ids =  [35, 124, 46, 53, 52, 65]
+
+        # leftEyeUpper0_ids = [466, 388, 387, 386, 385, 384, 398] # landmark indices for the upper eye contour of the left eye
+        # leftEyeLower0_ids = [263, 249, 390, 373, 374, 380, 381, 382, 362]
+        # leftEyebrowUpper_ids =  [383, 300, 293, 334, 296, 336, 285, 417]
+        # leftEyebrowLower_ids = [265, 353, 276, 283, 282, 295]
+
+        # rightEyeUpper0 = facial_landmarks[rightEyeUpper0_ids, :] # get the relevant eye landmark coordinates 
+        # rightEyeLower0 = facial_landmarks[rightEyeLower0_ids, :]
+        # rightEyebrowLower = facial_landmarks[rightEyebrowLower_ids, :]
+        # rightEyebrowUpper = facial_landmarks[rightEyebrowUpper_ids, :]
+        # right_eye_all = torch.cat([rightEyeUpper0, rightEyeLower0], dim=0)
+
+        # leftEyeUpper0 = facial_landmarks[leftEyeUpper0_ids, :]
+        # leftEyeLower0 = facial_landmarks[leftEyeLower0_ids, :]
+        # leftEyebrowLower = facial_landmarks[leftEyebrowLower_ids, :]
+        # leftEyebrowUpper = facial_landmarks[leftEyebrowUpper_ids, :]
+        # left_eye_all = torch.cat([leftEyeUpper0, leftEyeLower0], dim=0)
+        # if eye == "right":
+        #     # eye_left = rightEyeUpper0[:, 0].min().item()
+        #     # eye_right = rightEyeUpper0[:, 0].max().item()
+        #     # eye_top = rightEyeUpper0[:, 1].min().item()
+        #     # eye_bottom = rightEyeLower0[:, 1].max().item()
+        #     eye_left = right_eye_all[:, 0].min().item()
+        #     eye_right = right_eye_all[:, 0].max().item()
+        #     eye_top = right_eye_all[:, 1].min().item()
+        #     eye_bottom = right_eye_all[:, 1].max().item()
+        # else:
+        #     # eye_left = leftEyeUpper0[:, 0].min().item()
+        #     # eye_right = leftEyeUpper0[:, 0].max().item()
+        #     # eye_top = leftEyeUpper0[:, 1].min().item()
+        #     # eye_bottom = leftEyeLower0[:, 1].max().item()
+        #     eye_left = left_eye_all[:, 0].min().item()
+        #     eye_right = left_eye_all[:, 0].max().item()
+        #     eye_top = left_eye_all[:, 1].min().item()
+        #     eye_bottom = left_eye_all[:, 1].max().item()
+
+        # og 
+        # eye_width = eye_right - eye_left
+        # horizontal_margin = 0.25 * eye_width
+        # eye_left -= horizontal_margin
+        # eye_right += horizontal_margin
+
+        # eye_height = eye_bottom - eye_top
+        # vertical_margin = .25 * eye_height 
+        # eye_top -= vertical_margin
+        # eye_bottom += vertical_margin
 
         return eye_left, eye_right, eye_top, eye_bottom, eye_width, eye_height
 
@@ -281,17 +309,17 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
         """
         left, right, top, bottom = eye_bounds
         eye_width, eye_height = eye_crop_dims
-        ratio = float(64)/max(eye_height*2, eye_width*2)
-        new_eye_size = tuple([int(x*ratio) for x in [eye_height*2, eye_width*2]])
+        ratio = float(64)/max(eye_height, eye_width) #why *2
+        new_eye_size = tuple([int(x*ratio) for x in [eye_height, eye_width]])
         eye_delta_w = 64 - new_eye_size[1]
         eye_delta_h = 64 - new_eye_size[0]
         eye_top_padding, eye_bottom_padding = eye_delta_h//2, eye_delta_h-(eye_delta_h//2)
         eye_left_padding, eye_right_padding = eye_delta_w//2, eye_delta_w-(eye_delta_w//2)
 
         iris_landmarks[:, 0] = iris_landmarks[:, 0] - eye_left_padding
-        iris_landmarks[:, 0] = iris_landmarks[:, 0]*(eye_width*2/new_eye_size[1]) + left
+        iris_landmarks[:, 0] = iris_landmarks[:, 0]*(eye_width/new_eye_size[1]) + left
         iris_landmarks[:, 1] = iris_landmarks[:, 1] - eye_top_padding
-        iris_landmarks[:, 1] = iris_landmarks[:, 1]*(eye_height*2/new_eye_size[0]) + top
+        iris_landmarks[:, 1] = iris_landmarks[:, 1]*(eye_height/new_eye_size[0]) + top
         return iris_landmarks
 
 
@@ -340,7 +368,7 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
         left_eye_crop = padded_face[int(left_eye_top):int(left_eye_bottom), int(left_eye_left):int(left_eye_right), :]
         right_eye_crop = padded_face[int(right_eye_top):int(right_eye_bottom), int(right_eye_left):int(right_eye_right), :]
         # need to flip horizontally for right eye, according to https://github.com/Morris88826/MediaPipe_Iris
-        left_eye_crop = torch.flip(left_eye_crop, [1])
+        right_eye_crop = torch.flip(right_eye_crop, [1])
 
 
         # debugging only
@@ -361,13 +389,12 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
         # test replacing 
 
         # debugging only
-
-        # all_left_eye_landmarks = torch.cat([left_eye_contour_landmarks, left_iris_landmarks], dim=0)
-        # all_right_eye_landmarks = torch.cat([right_eye_contour_landmarks, right_iris_landmarks], dim=0)
-        # padded_left_eye = self.unnormalize_eye(proc_left_eye_crop)
-        # padded_right_eye = self.unnormalize_eye(proc_right_eye_crop)
-        # self.vis_iris_landmarks_on_eye_crop(padded_left_eye, all_left_eye_landmarks) 
-        # self.vis_iris_landmarks_on_eye_crop(padded_right_eye, all_right_eye_landmarks)
+        all_left_eye_landmarks = torch.cat([left_eye_contour_landmarks, left_iris_landmarks], dim=0)
+        all_right_eye_landmarks = torch.cat([right_eye_contour_landmarks, right_iris_landmarks], dim=0)
+        padded_left_eye = self.unnormalize_eye(proc_left_eye_crop)
+        padded_right_eye = self.unnormalize_eye(proc_right_eye_crop)
+        self.vis_iris_landmarks_on_eye_crop(padded_left_eye, all_left_eye_landmarks) 
+        self.vis_iris_landmarks_on_eye_crop(padded_right_eye, all_right_eye_landmarks)
 
         # adjust the iris landmarks to the original image pixel space
         left_iris_landmarks = self.iris_landmarks_to_original_pixel_space(left_iris_landmarks, (left_eye_left, left_eye_right, left_eye_top, left_eye_bottom), (left_eye_width, left_eye_height))
@@ -384,7 +411,7 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
         # (i.e., ordered same as in the MediaPipe 478-landmarker model), therefore can just append in order, left first, then right
         # IMPORTANT: SWAP LEFT AND RIGHT IRIS LANDMARKS. Left crop actually corresponds to what MP considers right eye, because of mirrorring.This is confirmed via the zoomed-in visualization
         # comparing actual MediaPipe 478-landmarker model output to the output of our piecemeal facial then iris landmark detection approach
-        all_landmarks = torch.cat([facial_landmarks, right_iris_landmarks, left_iris_landmarks], dim=0)
+        all_landmarks = torch.cat([facial_landmarks, left_iris_landmarks, right_iris_landmarks], dim=0)
         
         # The z coordinate of the landmarks is scaled by the height of the image, unlike in the case of the actual MediaPipe model.
         # To convert to the same scale as the actual MediaPipe model, we need to divide the z coordinate by the height of the image.
@@ -408,18 +435,18 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
 #################### TESTING PyTorchMediapipeFaceLandmarker ####################
 ##########################################################################
 
-# mp = PyTorchMediapipeFaceLandmarker()
-# # validation on image
-# img_path = "obama2.jpeg"
-# img = cv2.imread(img_path)
-# img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-# img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = True) # emulate format that will be output by generator
-# landmarks, blendshapes, padded_face = mp(img_tensor)
+mp = PyTorchMediapipeFaceLandmarker()
+# validation on image
+img_path = "data/obama2.jpeg"
+img = cv2.imread(img_path)
+img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = True) # emulate format that will be output by generator
+landmarks, blendshapes, padded_face = mp(img_tensor)
 
-# # vis and compare
-# padded_face = padded_face.detach().numpy().astype(np.uint8)
-# blendshapes_np = blendshapes.detach().numpy()
-# compare_to_real_mediapipe(landmarks, blendshapes_np, padded_face)
+# vis and compare
+padded_face = padded_face.detach().numpy().astype(np.uint8)
+blendshapes_np = blendshapes.detach().numpy()
+compare_to_real_mediapipe(landmarks, blendshapes_np, padded_face, save_landmark_comparison=True)
 # W = torch.tensor(padded_face.shape[1])
 # H = torch.tensor(padded_face.shape[0])
 # aligned3d, aligned2d  = align_landmarks_differentiable(landmarks, W, H, W, H)

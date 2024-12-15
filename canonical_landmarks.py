@@ -1,3 +1,7 @@
+"""
+Canonical Mediapipe FaceLandmarks 468 keypoints, used for alignment.
+"""
+
 
 import torch
 

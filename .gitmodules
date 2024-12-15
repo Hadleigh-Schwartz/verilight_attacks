@@ -1,6 +1,3 @@
-[submodule "ME-GraphAU"]
-	path = ME-GraphAU
-	url = https://github.com/CVI-SZU/ME-GraphAU.git
 [submodule "deconstruct-mediapipe"]
 	path = deconstruct-mediapipe
 	url = https://github.com/nlml/deconstruct-mediapipe.git
