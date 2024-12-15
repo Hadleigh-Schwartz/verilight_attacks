@@ -151,8 +151,9 @@ class PyTorchMediapipeFaceMesh(nn.Module):
         Based off of this resource (https://github.com/Morris88826/MediaPipe_Iris/blob/main/README.md), the iris model expects a 64x64 image of the eye
         cropped according to the  (rightEyeUpper0, rightEyeLower0, leftEyeUpper0, leftEyeLower0) landmarks, whose indices are specified 
         here: https://github.com/tensorflow/tfjs-models/blob/838611c02f51159afdd77469ce67f0e26b7bbb23/face-landmarks-detection/src/mediapipe-facemesh/keypoints.ts
-        It is also mentioned that a significant (0.25 or 1, the README is ambiguous), is added to the crop of the eye. I will add 0.5*width to the left and right,
-        and 0.5*height to the top and bottom as a middle ground.
+        It is also mentioned that a significant (0.25 or 1, the README is ambiguous), is added to the crop of the eye.
+        I will add 0.25*width to the left and right, but a 1.5*height to the top and bottom because I find that blinking detection is severely
+        disrupted if the crop around the eye doesn't show sufficient vertical space, encompassing the entire eyelid and into the eyebrow area.
         """
         
         rightEyeUpper0_ids = [246, 161, 160, 159, 158, 157, 173] # landmark indices for the upper eye contour of the right eye
@@ -178,12 +179,12 @@ class PyTorchMediapipeFaceMesh(nn.Module):
             eye_bottom = leftEyeLower0[:, 1].max().item()
 
         eye_width = eye_right - eye_left
-        horizontal_margin = 0.5 * eye_width
+        horizontal_margin = 0.25 * eye_width
         eye_left -= horizontal_margin
         eye_right += horizontal_margin
 
         eye_height = eye_bottom - eye_top
-        vertical_margin = 0.5 * eye_height
+        vertical_margin = 1.5 * eye_height 
         eye_top -= vertical_margin
         eye_bottom += vertical_margin
 
@@ -223,7 +224,7 @@ class PyTorchMediapipeFaceMesh(nn.Module):
         """
         img: eye crop tensor, 64 x 64 x 3, RGB
         """
-        img = img.numpy().astype(np.uint8)
+        img = img.detach().numpy().astype(np.uint8)
         img = np.ascontiguousarray(img, dtype=np.uint8)
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         for i in range(iris_landmarks.shape[0]):
@@ -237,7 +238,7 @@ class PyTorchMediapipeFaceMesh(nn.Module):
         """
         img: face tensor, H x W x 3, RGB
         """
-        img = img.numpy().astype(np.uint8)
+        img = img.detach().numpy().astype(np.uint8)
         img = np.ascontiguousarray(img, dtype=np.uint8)
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         for i in range(iris_landmarks.shape[0]):
@@ -297,7 +298,7 @@ class PyTorchMediapipeFaceMesh(nn.Module):
             print("NO FACE DETECTED")
             landmarks_zeroes = torch.zeros(478, 3)
             blendshapes_zeroes = torch.zeros(52)
-            face_zeroes = torch.zeros_like(img_tensor)
+            face_zeroes = torch.zeros(img_tensor.shape)
             return landmarks_zeroes, blendshapes_zeroes, face_zeroes
 
         proc_face = self.preprocess_face_for_landmark_detection(img_tensor)
@@ -316,15 +317,16 @@ class PyTorchMediapipeFaceMesh(nn.Module):
         right_eye_left, right_eye_right, right_eye_top, right_eye_bottom, right_eye_width, right_eye_height = self.get_eye_bounds(facial_landmarks, eye = "right")
         left_eye_left, left_eye_right, left_eye_top, left_eye_bottom, left_eye_width, left_eye_height = self.get_eye_bounds(facial_landmarks, eye = "left")
 
-        # print("right eye left grad_fn: ", right_eye_left.grad_fn)
-
+       
         left_eye_crop = padded_face[int(left_eye_top):int(left_eye_bottom), int(left_eye_left):int(left_eye_right), :]
         right_eye_crop = padded_face[int(right_eye_top):int(right_eye_bottom), int(right_eye_left):int(right_eye_right), :]
+        # need to flip horizontally for right eye, according to https://github.com/Morris88826/MediaPipe_Iris
+        left_eye_crop = torch.flip(left_eye_crop, [1])
 
 
         # debugging only
         # vis_eye_cropping(padded_face, facial_landmarks, (right_eye_left, right_eye_right, right_eye_top, right_eye_bottom), (left_eye_left, left_eye_right, left_eye_top, left_eye_bottom))
-
+ 
         # pad the eye crops
         proc_left_eye_crop = self.preprocess_eye_for_landmark_detection(left_eye_crop)
         proc_right_eye_crop = self.preprocess_eye_for_landmark_detection(right_eye_crop)
@@ -332,14 +334,19 @@ class PyTorchMediapipeFaceMesh(nn.Module):
         # run iris detection
         left_eye_contour_landmarks, left_iris_landmarks = self.irislandmarker.predict(proc_left_eye_crop)
         right_eye_contour_landmarks, right_iris_landmarks = self.irislandmarker.predict(proc_right_eye_crop)
+        print("EYE CONTOUR LANDMARKS: ", left_eye_contour_landmarks.shape)
         left_iris_landmarks = left_iris_landmarks.view(5, 3)
         right_iris_landmarks = right_iris_landmarks.view(5, 3)
 
         # debugging only
-        # padded_left_eye = unnormalize_eye(proc_left_eye_crop)
-        # padded_right_eye = unnormalize_eye(proc_right_eye_crop)
-        # vis_iris_landmarks_on_eye_crop(padded_left_eye, left_iris_landmarks) 
-        # vis_iris_landmarks_on_eye_crop(padded_right_eye, right_iris_landmarks)
+        left_eye_contour_landmarks = left_eye_contour_landmarks.view(71, 3)
+        right_eye_contour_landmarks = right_eye_contour_landmarks.view(71, 3)
+        all_left_eye_landmarks = torch.cat([left_eye_contour_landmarks, left_iris_landmarks], dim=0)
+        all_right_eye_landmarks = torch.cat([right_eye_contour_landmarks, right_iris_landmarks], dim=0)
+        padded_left_eye = self.unnormalize_eye(proc_left_eye_crop)
+        padded_right_eye = self.unnormalize_eye(proc_right_eye_crop)
+        self.vis_iris_landmarks_on_eye_crop(padded_left_eye, all_left_eye_landmarks) 
+        self.vis_iris_landmarks_on_eye_crop(padded_right_eye, all_right_eye_landmarks)
 
         # adjust the iris landmarks to the original image pixel space
         left_iris_landmarks = self.iris_landmarks_to_original_pixel_space(left_iris_landmarks, (left_eye_left, left_eye_right, left_eye_top, left_eye_bottom), (left_eye_width, left_eye_height))
@@ -394,70 +401,21 @@ class VeriLightDynamicFeatures(nn.Module):
         cy_max = torch.max(coords[:, 1])
         bbox = torch.tensor([[cx_min, cy_min], [cx_max, cy_max]])
         return bbox
-    
-    # def visualize_signals(self, signals, landmarks_over_time, padded_faces):
-    #     signals = signals.detach().numpy()
-    #     signals_min = signals.min()
-    #     signals_max = signals.max()
-    #     for f in range(len(padded_faces)):
-    #         fig, ax = plt.subplots()
-    #         for i in range(signals.shape[0]):
-    #             signal = signals[i, :f]
-    #             ax.plot(signal, label = f"{self.target_features[i]}")
-    #         ax.set_xlim(max(0, f - 25), min(f + 25, len(padded_faces)))
-    #         ax.set_ylim(signals_min, signals_max)
-    #         ax.legend()
-    #         # get plot as image
-    #         fig = plt.gcf()
-    #         fig.canvas.draw()
-    #         fig_arr = np.array(fig.canvas.renderer.buffer_rgba())[:, :, :3]
-    #         fig_arr = fig_arr[:, :, ::-1]
-
-    #         # draw landmarks on the image
-    #         frame = padded_faces[f]
-    #         frame = np.ascontiguousarray(frame, dtype=np.uint8)
-    #         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-    #         frame_landmarks = landmarks_over_time[f]
-    #         for t in self.target_features:
-    #             if type(t) != int:
-    #                 lm1 =  tuple(frame_landmarks[t[0]][:2].astype(np.int8))
-    #                 lm2 = tuple(frame_landmarks[t[1]][:2].astype(np.int8))
-    #                 print(lm1, lm2)
-    #                 cv2.circle(frame, lm1, 1, (0, 255, 0), -1)
-    #                 cv2.circle(frame, lm2, 1, (0, 255, 0), -1)
-    #                 cv2.line(frame,lm1, lm2, (0, 255, 0), 1)
-
-            
-    #         frame_shape = frame.shape
-    #         arr_shape = fig_arr.shape
-    #         if frame_shape[0] < arr_shape[0]:
-    #             # add padding to bottom
-    #             padding = np.zeros((arr_shape[0] - frame_shape[0], frame_shape[1], frame_shape[2]), dtype=np.uint8)
-    #             frame = np.concatenate([frame, padding], axis=0)
-    #         elif frame_shape[0] > arr_shape[0]:
-    #             padding = np.zeros((frame_shape[0] - arr_shape[0], arr_shape[1], arr_shape[2]), dtype=np.uint8)
-    #             fig_arr = np.concatenate([fig_arr, padding], axis=0)
-    #         vis = np.concatenate([frame, fig_arr], axis=1)
-
-    #         cv2.imshow("Signals", vis)
-    #         if cv2.waitKey(1) & 0xFF == ord('q'):
-    #             break
-                
+       
     def forward(self, video_tensor):
         """
         IMPORTANT: All videos underlying the video_tensor should have the same framerate and duration.
         """
-        landmarks_over_time = [] # for vis only
         padded_faces = [] # for vis only
         feature_values = torch.empty(video_tensor.shape[0], len(self.target_features)) # list of values for each feature in self.target_features for each frame
         for i in range(video_tensor.shape[0]):
             frame = video_tensor[i, :, :, :]
             landmarks, blendshapes, padded_face = self.mp(frame)
-    
-            landmarks_curr = landmarks.detach().numpy().copy()# for vis. idk why but if i dont do copy it takes on the value of the lanmdarks noramlized in alignment...
-            # print(landmarks_curr.min(), landmarks_curr.max())
-            landmarks_over_time.append(landmarks_curr) # for vis
-            padded_faces.append(padded_face.detach().numpy()) # for vis
+
+            landmarks_curr = landmarks.detach().numpy()# for vis. idk why but if i dont do copy it takes on the value of the lanmdarks noramlized in alignment...
+            print(landmarks_curr.min(), landmarks_curr.max())
+            np.save(f"landmarks_frame{i}.npy", landmarks_curr)
+            padded_faces.append(padded_face.detach().numpy()) # for vis 
 
             if torch.all(landmarks == 0): # no face detected
                 print("NO FACE DETECTE, VL")
@@ -468,6 +426,7 @@ class VeriLightDynamicFeatures(nn.Module):
                     for feat_num, feature in enumerate(self.target_features):
                         feature_values[i,feat_num] = 0
                 continue
+
             W, H = torch.tensor(padded_face.shape[1]), torch.tensor(padded_face.shape[0])
             _, landmark_coords_2d_aligned = align_landmarks_differentiable(landmarks, W, H, W, H)
 
@@ -506,7 +465,12 @@ class VeriLightDynamicFeatures(nn.Module):
         #, so we've approxcimately taken care of that above in the loop with the repetitions
         # standard scale each row
         signals = (signals - signals.mean(dim=1, keepdim=True)) / signals.std(dim=1, keepdim=True)
-        self.visualize_signals(signals, landmarks_over_time, padded_faces) # visualization has to be done on padded faces because that's what landmarks are extracted on
+
+        # save the signals, padded faces, and landmarks over time
+        np.save("signals.npy", signals.detach().numpy())
+        np.save("padded_faces.npy", padded_faces)
+        
+        # visualize_signals(signals, landmarks_over_time, padded_faces) # visualization has to be done on padded faces because that's what landmarks are extracted on
 
         # apply rolling average to each row
         # https://discuss.pytorch.org/t/doing-a-very-basic-simple-moving-average/5003/6
@@ -518,9 +482,6 @@ class VeriLightDynamicFeatures(nn.Module):
         front_val = smoothed_signals[:, 0].unsqueeze(1).repeat(1, side_reps)
         back_val = smoothed_signals[:, -1].unsqueeze(1).repeat(1, signal_len_diff - side_reps)
         smoothed_signals = torch.cat([front_val, smoothed_signals, back_val], dim=1)
-
-        # TODO: Visualize the signals before and after smoothing, alongside the video frames with the distance-related
-        # landmarks drawn on them
 
         # no need to resample because we will enforce during data processing
         # that all videos have the same framerate and duration, leading to signals of the same length
@@ -539,25 +500,25 @@ class VeriLightDynamicFeatures(nn.Module):
         return dynamic_feature_vec
             
 
-vl = VeriLightDynamicFeatures()
-# validation on video
-cap = cv2.VideoCapture("test_video.mp4")
-# read video in as a tensor of shape (frames, H, W, 3), RGB order
-frames = []
-max_frames = 5 # set for vis/testing 
-frame_num = 0
-while True:
-    ret, img = cap.read()
-    if not ret:
-        break 
-    frame_num += 1
-    if frame_num > max_frames:
-        break
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = True)
-    frames.append(img_tensor)
-frames = torch.stack(frames)
-test = vl(frames)
+# vl = VeriLightDynamicFeatures()
+# # validation on video
+# cap = cv2.VideoCapture("test_video.mp4")
+# # read video in as a tensor of shape (frames, H, W, 3), RGB order
+# frames = []
+# max_frames = 300 # set for vis/testing 
+# frame_num = 0
+# while True:
+#     ret, img = cap.read()
+#     if not ret:
+#         break 
+#     frame_num += 1
+#     if frame_num > max_frames:
+#         break
+#     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+#     img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = True)
+#     frames.append(img_tensor)
+# frames = torch.stack(frames)
+# test = vl(frames)
 
 # generate computation graph visualization for verilight dynamic feature extractror
 # sys.setrecursionlimit(10000) # to avoid RecursionError when building the graph
@@ -566,26 +527,86 @@ test = vl(frames)
 # dot.render('dyn_feat_graph')
 
 
+def visualize_signals():
+    target_features = [(0, 17), (40, 17), (270, 17), (0, 91), (0, 321),
+                                 6, 7, 8, 9, 10, 11, 12, 23, 25, 50, 51] 
+    signals = np.load("signals.npy")
+    padded_faces = np.load("padded_faces.npy", allow_pickle=True)
+    signals_min = signals.min()
+    signals_max = signals.max()
+    out = None
+    for f in range(len(padded_faces)):
+        fig, ax = plt.subplots()
+        for i in range(signals.shape[0]):
+            if not (i > 5 and i < 10):
+                continue
+            signal = signals[i, :f]
+            ax.plot(signal, label = f"{target_features[i]}")
+        ax.set_xlim(max(0, f - 25), min(f + 25, len(padded_faces)))
+        ax.set_ylim(signals_min, signals_max)
+        ax.legend()
+        # get plot as image
+        fig = plt.gcf()
+        fig.canvas.draw()
+        fig_arr = np.array(fig.canvas.renderer.buffer_rgba())[:, :, :3]
+        fig_arr = fig_arr[:, :, ::-1]
+
+        # draw landmarks on the image
+        frame = padded_faces[f]
+        frame = np.ascontiguousarray(frame, dtype=np.uint8)
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        frame_landmarks = np.load(f"landmarks_frame{f}.npy")
+        print(frame_landmarks.min(), frame_landmarks.max())
+        for t in target_features:
+            if type(t) != int:
+                lm1 =  tuple(frame_landmarks[t[0]][:2])
+                lm2 = tuple(frame_landmarks[t[1]][:2])
+                lm1 = (int(lm1[0]), int(lm1[1]))
+                lm2 = (int(lm2[0]), int(lm2[1]))
+                cv2.circle(frame, lm1, 1, (0, 255, 0), -1)
+                cv2.circle(frame, lm2, 1, (0, 255, 0), -1)
+                cv2.line(frame,lm1, lm2, (0, 255, 0), 1)
+
+        
+        frame_shape = frame.shape
+        arr_shape = fig_arr.shape
+        if frame_shape[0] < arr_shape[0]:
+            # add padding to bottom
+            padding = np.zeros((arr_shape[0] - frame_shape[0], frame_shape[1], frame_shape[2]), dtype=np.uint8)
+            frame = np.concatenate([frame, padding], axis=0)
+        elif frame_shape[0] > arr_shape[0]:
+            padding = np.zeros((frame_shape[0] - arr_shape[0], arr_shape[1], arr_shape[2]), dtype=np.uint8)
+            fig_arr = np.concatenate([fig_arr, padding], axis=0)
+        vis = np.concatenate([frame, fig_arr], axis=1)
+        if out is None:
+            out = cv2.VideoWriter("signals_vis.mp4", cv2.VideoWriter_fourcc("M", "J", "P", "G"), 20, (vis.shape[1], vis.shape[0]))
+        out.write(vis)
+    out.release()
+       
+            
+# visualize_signals()
+
+# NOTE: I think our right and left are flipped. The right eye crop is actually the left eye, and vice versa.
 
 ##########################################################################
 #################### TESTING PyTorchMediapipeFaceMesh ####################
 ##########################################################################
 
-# mp = PyTorchMediapipeFaceMesh()
+mp = PyTorchMediapipeFaceMesh()
 # validation on image
-# img_path = "harry.jpg"
-# img = cv2.imread(img_path)
-# img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-# img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = True) # emulate format that will be output by generator
-# landmarks, blendshapes, padded_face = mp(img_tensor)
+img_path = "blinking.jpg"
+img = cv2.imread(img_path)
+img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = True) # emulate format that will be output by generator
+landmarks, blendshapes, padded_face = mp(img_tensor)
 
-# # vis and compare
-# padded_face = padded_face.detach().numpy().astype(np.uint8)
-# blendshapes_np = blendshapes.detach().numpy()
-# compare_to_real_mediapipe(landmarks, blendshapes_np, padded_face)
-# W = torch.tensor(padded_face.shape[1])
-# H = torch.tensor(padded_face.shape[0])
-# aligned3d, aligned2d  = align_landmarks_differentiable(landmarks, W, H, W, H)
+# vis and compare
+padded_face = padded_face.detach().numpy().astype(np.uint8)
+blendshapes_np = blendshapes.detach().numpy()
+compare_to_real_mediapipe(landmarks, blendshapes_np, padded_face)
+W = torch.tensor(padded_face.shape[1])
+H = torch.tensor(padded_face.shape[0])
+aligned3d, aligned2d  = align_landmarks_differentiable(landmarks, W, H, W, H)
 
 # # generate computation graph visualization for mediapipe facemesh 
 # dot = make_dot(landmarks, params=dict(mp.named_parameters()))

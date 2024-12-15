@@ -122,7 +122,7 @@ def record_face_video():
     cap = cv2.VideoCapture(0)
     fourcc = cv2.VideoWriter_fourcc("M", "J", "P", "G")
     out_frames = []
-    num_frames = 90
+    num_frames = 300
     count = 0
     warmup_count = 0
     while True:
@@ -169,8 +169,8 @@ def record_face_video():
         cropped_face = frame[y1:y2, x1:x2, :]
         width = x2 - x1
         height = y2 - y1
-        padding_x = int((max_width - width) / 2)
-        padding_y = int((max_height - height) / 2)
+        padding_x = max(0, int((max_width - width) / 2))
+        padding_y = max(0, int((max_height - height) / 2))
         x_diff = 0
         y_diff = 0
         if padding_x*2 + width != max_width:
@@ -178,11 +178,14 @@ def record_face_video():
         if padding_y*2 + height != max_height:
             y_diff = max_height - (padding_y*2 + height)
         # add the diff to left
+
         padded_face = np.pad(cropped_face, ((padding_y + y_diff, padding_y), (padding_x + x_diff, padding_x), (0, 0)))
         # print(f"{i}/{len(face_frames)}, {padded_face.shape}, {padded_face.dtype}")
         out.write(padded_face)
 
     out.release()
+
+# record_face_video()
 
 def compare_to_real_mediapipe(landmarks_torch,  blendshapes, padded_face, save_landmark_comparison = False, live_demo = False):
     """
@@ -245,10 +248,12 @@ def compare_to_real_mediapipe(landmarks_torch,  blendshapes, padded_face, save_l
 
     # create bar plots for the blendshapes
     plt.style.use('ggplot')
-    plt.figsize=(20, 20)
+    plt.figsize=(30, 20)
     df = pd.DataFrame(data={'Our Model': blendshapes, 'Real MP': real_mp_blendshapes}, 
                         index=BLENDSHAPE_NAMES)
-    df.plot(kind='bar', color = ['r', 'g'])
+    df.plot(kind='bar', color = ['r', 'g'], align='center')
+    # add more space between x-axis ticks
+
     plt.tight_layout()
     plt.draw()
     fig = plt.gcf()
