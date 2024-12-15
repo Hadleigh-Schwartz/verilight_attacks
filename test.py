@@ -152,31 +152,50 @@ class PyTorchMediapipeFaceMesh(nn.Module):
         cropped according to the  (rightEyeUpper0, rightEyeLower0, leftEyeUpper0, leftEyeLower0) landmarks, whose indices are specified 
         here: https://github.com/tensorflow/tfjs-models/blob/838611c02f51159afdd77469ce67f0e26b7bbb23/face-landmarks-detection/src/mediapipe-facemesh/keypoints.ts
         It is also mentioned that a significant (0.25 or 1, the README is ambiguous), is added to the crop of the eye.
-        I will add 0.25*width to the left and right, but a 1.5*height to the top and bottom because I find that blinking detection is severely
-        disrupted if the crop around the eye doesn't show sufficient vertical space, encompassing the entire eyelid and into the eyebrow area.
-        """
+        I noticed that it is essential to have the full eye lids and eyebrows included for the pruposes of blinking detection, 
+        so unlike the resource above I also consider the eyebrow landmarks when determining the boundaries for the eye crop.
+        I will add 0.25*width to the left and right, and .25*height to the top and bottom of the eye crop."""
         
         rightEyeUpper0_ids = [246, 161, 160, 159, 158, 157, 173] # landmark indices for the upper eye contour of the right eye
         rightEyeLower0_ids = [33, 7, 163, 144, 145, 153, 154, 155, 133]
+        rightEyebrowUpper_ids =  [156, 70, 63, 105, 66, 107, 55, 193]
+        rightEyebrowLower_ids =  [35, 124, 46, 53, 52, 65]
 
         leftEyeUpper0_ids = [466, 388, 387, 386, 385, 384, 398] # landmark indices for the upper eye contour of the left eye
         leftEyeLower0_ids = [263, 249, 390, 373, 374, 380, 381, 382, 362]
+        leftEyebrowUpper_ids =  [383, 300, 293, 334, 296, 336, 285, 417]
+        leftEyebrowLower_ids = [265, 353, 276, 283, 282, 295]
 
         rightEyeUpper0 = facial_landmarks[rightEyeUpper0_ids, :] # get the relevant eye landmark coordinates 
         rightEyeLower0 = facial_landmarks[rightEyeLower0_ids, :]
+        rightEyebrowLower = facial_landmarks[rightEyebrowLower_ids, :]
+        rightEyebrowUpper = facial_landmarks[rightEyebrowUpper_ids, :]
+        right_eye_all = torch.cat([rightEyeUpper0, rightEyeLower0], dim=0)
+
         leftEyeUpper0 = facial_landmarks[leftEyeUpper0_ids, :]
         leftEyeLower0 = facial_landmarks[leftEyeLower0_ids, :]
+        leftEyebrowLower = facial_landmarks[leftEyebrowLower_ids, :]
+        leftEyebrowUpper = facial_landmarks[leftEyebrowUpper_ids, :]
+        left_eye_all = torch.cat([leftEyeUpper0, leftEyeLower0], dim=0)
 
         if eye == "right":
-            eye_left = rightEyeUpper0[:, 0].min().item()
-            eye_right = rightEyeUpper0[:, 0].max().item()
-            eye_top = rightEyeUpper0[:, 1].min().item()
-            eye_bottom = rightEyeLower0[:, 1].max().item()
+            # eye_left = rightEyeUpper0[:, 0].min().item()
+            # eye_right = rightEyeUpper0[:, 0].max().item()
+            # eye_top = rightEyeUpper0[:, 1].min().item()
+            # eye_bottom = rightEyeLower0[:, 1].max().item()
+            eye_left = right_eye_all[:, 0].min().item()
+            eye_right = right_eye_all[:, 0].max().item()
+            eye_top = right_eye_all[:, 1].min().item()
+            eye_bottom = right_eye_all[:, 1].max().item()
         else:
-            eye_left = leftEyeUpper0[:, 0].min().item()
-            eye_right = leftEyeUpper0[:, 0].max().item()
-            eye_top = leftEyeUpper0[:, 1].min().item()
-            eye_bottom = leftEyeLower0[:, 1].max().item()
+            # eye_left = leftEyeUpper0[:, 0].min().item()
+            # eye_right = leftEyeUpper0[:, 0].max().item()
+            # eye_top = leftEyeUpper0[:, 1].min().item()
+            # eye_bottom = leftEyeLower0[:, 1].max().item()
+            eye_left = left_eye_all[:, 0].min().item()
+            eye_right = left_eye_all[:, 0].max().item()
+            eye_top = left_eye_all[:, 1].min().item()
+            eye_bottom = left_eye_all[:, 1].max().item()
 
         eye_width = eye_right - eye_left
         horizontal_margin = 0.25 * eye_width
@@ -184,7 +203,7 @@ class PyTorchMediapipeFaceMesh(nn.Module):
         eye_right += horizontal_margin
 
         eye_height = eye_bottom - eye_top
-        vertical_margin = 1.5 * eye_height 
+        vertical_margin = .6 * eye_height 
         eye_top -= vertical_margin
         eye_bottom += vertical_margin
 
@@ -334,19 +353,21 @@ class PyTorchMediapipeFaceMesh(nn.Module):
         # run iris detection
         left_eye_contour_landmarks, left_iris_landmarks = self.irislandmarker.predict(proc_left_eye_crop)
         right_eye_contour_landmarks, right_iris_landmarks = self.irislandmarker.predict(proc_right_eye_crop)
-        print("EYE CONTOUR LANDMARKS: ", left_eye_contour_landmarks.shape)
         left_iris_landmarks = left_iris_landmarks.view(5, 3)
         right_iris_landmarks = right_iris_landmarks.view(5, 3)
-
-        # debugging only
         left_eye_contour_landmarks = left_eye_contour_landmarks.view(71, 3)
         right_eye_contour_landmarks = right_eye_contour_landmarks.view(71, 3)
-        all_left_eye_landmarks = torch.cat([left_eye_contour_landmarks, left_iris_landmarks], dim=0)
-        all_right_eye_landmarks = torch.cat([right_eye_contour_landmarks, right_iris_landmarks], dim=0)
-        padded_left_eye = self.unnormalize_eye(proc_left_eye_crop)
-        padded_right_eye = self.unnormalize_eye(proc_right_eye_crop)
-        self.vis_iris_landmarks_on_eye_crop(padded_left_eye, all_left_eye_landmarks) 
-        self.vis_iris_landmarks_on_eye_crop(padded_right_eye, all_right_eye_landmarks)
+
+        # test replacing 
+
+        # debugging only
+
+        # all_left_eye_landmarks = torch.cat([left_eye_contour_landmarks, left_iris_landmarks], dim=0)
+        # all_right_eye_landmarks = torch.cat([right_eye_contour_landmarks, right_iris_landmarks], dim=0)
+        # padded_left_eye = self.unnormalize_eye(proc_left_eye_crop)
+        # padded_right_eye = self.unnormalize_eye(proc_right_eye_crop)
+        # self.vis_iris_landmarks_on_eye_crop(padded_left_eye, all_left_eye_landmarks) 
+        # self.vis_iris_landmarks_on_eye_crop(padded_right_eye, all_right_eye_landmarks)
 
         # adjust the iris landmarks to the original image pixel space
         left_iris_landmarks = self.iris_landmarks_to_original_pixel_space(left_iris_landmarks, (left_eye_left, left_eye_right, left_eye_top, left_eye_bottom), (left_eye_width, left_eye_height))
@@ -413,7 +434,6 @@ class VeriLightDynamicFeatures(nn.Module):
             landmarks, blendshapes, padded_face = self.mp(frame)
 
             landmarks_curr = landmarks.detach().numpy()# for vis. idk why but if i dont do copy it takes on the value of the lanmdarks noramlized in alignment...
-            print(landmarks_curr.min(), landmarks_curr.max())
             np.save(f"landmarks_frame{i}.npy", landmarks_curr)
             padded_faces.append(padded_face.detach().numpy()) # for vis 
 
@@ -556,7 +576,6 @@ def visualize_signals():
         frame = np.ascontiguousarray(frame, dtype=np.uint8)
         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         frame_landmarks = np.load(f"landmarks_frame{f}.npy")
-        print(frame_landmarks.min(), frame_landmarks.max())
         for t in target_features:
             if type(t) != int:
                 lm1 =  tuple(frame_landmarks[t[0]][:2])
@@ -593,20 +612,20 @@ def visualize_signals():
 ##########################################################################
 
 mp = PyTorchMediapipeFaceMesh()
-# validation on image
-img_path = "blinking.jpg"
-img = cv2.imread(img_path)
-img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = True) # emulate format that will be output by generator
-landmarks, blendshapes, padded_face = mp(img_tensor)
+# # validation on image
+# img_path = "obama2.jpeg"
+# img = cv2.imread(img_path)
+# img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+# img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = True) # emulate format that will be output by generator
+# landmarks, blendshapes, padded_face = mp(img_tensor)
 
-# vis and compare
-padded_face = padded_face.detach().numpy().astype(np.uint8)
-blendshapes_np = blendshapes.detach().numpy()
-compare_to_real_mediapipe(landmarks, blendshapes_np, padded_face)
-W = torch.tensor(padded_face.shape[1])
-H = torch.tensor(padded_face.shape[0])
-aligned3d, aligned2d  = align_landmarks_differentiable(landmarks, W, H, W, H)
+# # vis and compare
+# padded_face = padded_face.detach().numpy().astype(np.uint8)
+# blendshapes_np = blendshapes.detach().numpy()
+# compare_to_real_mediapipe(landmarks, blendshapes_np, padded_face)
+# W = torch.tensor(padded_face.shape[1])
+# H = torch.tensor(padded_face.shape[0])
+# aligned3d, aligned2d  = align_landmarks_differentiable(landmarks, W, H, W, H)
 
 # # generate computation graph visualization for mediapipe facemesh 
 # dot = make_dot(landmarks, params=dict(mp.named_parameters()))
@@ -615,20 +634,28 @@ aligned3d, aligned2d  = align_landmarks_differentiable(landmarks, W, H, W, H)
 
 
 # webcam live demo
-# cap = cv2.VideoCapture(0)
-# count = 0
-# while True:
-#     ret, img = cap.read()
-#     if not ret:
-#         break
-#     count += 1
-#     if count < 4:
-#         continue
-#     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-#     img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = False)
-#     landmarks, blendshapes, padded_face = mp(img_tensor)
-#     padded_face = padded_face.detach().numpy().astype(np.uint8)
-#     blendshapes_np = blendshapes.detach().numpy()
-#     compare_to_real_mediapipe(landmarks, blendshapes_np, padded_face, live_demo = True)
+cap = cv2.VideoCapture(0)
+count = 0
+while True:
+    ret, img = cap.read()
+    if not ret:
+        break
+    count += 1
+    if count < 4:
+        continue
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    mtcnn = MTCNN()
+    bboxes, probs = mtcnn.detect(img)
+    if bboxes is None:
+        continue
+    bbox = bboxes[0]
+    bbox = bbox + [-50, -50, 50, 50] # add padding to the bbox, based on observation that mediapipe landmarks extractor benefits from this
+    x1, y1, x2, y2 = bbox.astype(int)
+    img = img[y1:y2, x1:x2, :]
+    img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = False)
+    landmarks, blendshapes, padded_face = mp(img_tensor)
+    padded_face = padded_face.detach().numpy().astype(np.uint8)
+    blendshapes_np = blendshapes.detach().numpy()
+    compare_to_real_mediapipe(landmarks, blendshapes_np, padded_face, live_demo = True)
 
 
