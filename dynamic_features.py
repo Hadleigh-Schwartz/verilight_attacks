@@ -19,7 +19,7 @@ from models.mtcnn import MTCNN
 class VeriLightDynamicFeatures(nn.Module):
     def __init__(self):
         super(VeriLightDynamicFeatures, self).__init__()
-        
+
         self.mp = PyTorchMediapipeFaceLandmarker()
 
         self.target_features = [(0, 17), (40, 17), (270, 17), (0, 91), (0, 321),
@@ -140,25 +140,25 @@ class VeriLightDynamicFeatures(nn.Module):
 
 
 
-# vl = VeriLightDynamicFeatures()
-# # validation on video
-# cap = cv2.VideoCapture("test_video.mp4")
-# # read video in as a tensor of shape (frames, H, W, 3), RGB order
-# frames = []
-# max_frames = 300 # set for vis/testing 
-# frame_num = 0
-# while True:
-#     ret, img = cap.read()
-#     if not ret:
-#         break 
-#     frame_num += 1
-#     if frame_num > max_frames:
-#         break
-#     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-#     img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = True)
-#     frames.append(img_tensor)
-# frames = torch.stack(frames)
-# test = vl(frames)
+vl = VeriLightDynamicFeatures()
+# validation on video
+cap = cv2.VideoCapture("data/test_video.mp4")
+# read video in as a tensor of shape (frames, H, W, 3), RGB order
+frames = []
+max_frames = 300 # set for vis/testing 
+frame_num = 0
+while True:
+    ret, img = cap.read()
+    if not ret:
+        break 
+    frame_num += 1
+    if frame_num > max_frames:
+        break
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = True)
+    frames.append(img_tensor)
+frames = torch.stack(frames)
+test = vl(frames)
 
 # generate computation graph visualization for verilight dynamic feature extractror
 # sys.setrecursionlimit(10000) # to avoid RecursionError when building the graph
@@ -223,4 +223,4 @@ def visualize_signals():
     out.release()
        
             
-# visualize_signals()
+visualize_signals()

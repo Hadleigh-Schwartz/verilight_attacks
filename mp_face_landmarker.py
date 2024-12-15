@@ -15,6 +15,7 @@ from mp_alignment_differentiable import align_landmarks as align_landmarks_diffe
 from mp_alignment_original import align_landmarks as align_landmarks_original
 from torchviz import make_dot
 from matplotlib import pyplot as plt
+from eye_landmarks_ids import eye_landmark_ids
 
 sys.path.append("facenet-pytorch")
 from models.mtcnn import MTCNN
@@ -368,8 +369,9 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
         left_eye_crop = padded_face[int(left_eye_top):int(left_eye_bottom), int(left_eye_left):int(left_eye_right), :]
         right_eye_crop = padded_face[int(right_eye_top):int(right_eye_bottom), int(right_eye_left):int(right_eye_right), :]
         # need to flip horizontally for right eye, according to https://github.com/Morris88826/MediaPipe_Iris
-        right_eye_crop = torch.flip(right_eye_crop, [1])
-
+        flip = False
+        if flip:
+            right_eye_crop = torch.flip(right_eye_crop, [1])
 
         # debugging only
         # vis_eye_cropping(padded_face, facial_landmarks, (right_eye_left, right_eye_right, right_eye_top, right_eye_bottom), (left_eye_left, left_eye_right, left_eye_top, left_eye_bottom))
@@ -385,20 +387,39 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
         right_iris_landmarks = right_iris_landmarks.view(5, 3)
         left_eye_contour_landmarks = left_eye_contour_landmarks.view(71, 3)
         right_eye_contour_landmarks = right_eye_contour_landmarks.view(71, 3)
+        if flip:
+            # experimental
+            right_iris_landmarks_flipped = right_iris_landmarks.clone()
+            right_iris_landmarks_flipped[:, 0] = 64 - right_iris_landmarks_flipped[:, 0]
+            right_iris_landmarks = right_iris_landmarks_flipped
+            right_eye_contour_landmarks_flipped = right_eye_contour_landmarks.clone()
+            right_eye_contour_landmarks_flipped[:, 0] = 64 - right_eye_contour_landmarks_flipped[:, 0]
+            right_eye_contour_landmarks = right_eye_contour_landmarks_flipped
 
-        # test replacing 
+        keep_eye_ids = [i for i in range(71)] # eye landmarks to refine based on iris landmarker output
 
         # debugging only
-        all_left_eye_landmarks = torch.cat([left_eye_contour_landmarks, left_iris_landmarks], dim=0)
-        all_right_eye_landmarks = torch.cat([right_eye_contour_landmarks, right_iris_landmarks], dim=0)
-        padded_left_eye = self.unnormalize_eye(proc_left_eye_crop)
-        padded_right_eye = self.unnormalize_eye(proc_right_eye_crop)
-        self.vis_iris_landmarks_on_eye_crop(padded_left_eye, all_left_eye_landmarks) 
-        self.vis_iris_landmarks_on_eye_crop(padded_right_eye, all_right_eye_landmarks)
+        # all_left_eye_landmarks = torch.cat([left_eye_contour_landmarks[keep_eye_ids], left_iris_landmarks], dim=0)
+        # all_right_eye_landmarks = torch.cat([right_eye_contour_landmarks[keep_eye_ids], right_iris_landmarks], dim=0)
+        # padded_left_eye = self.unnormalize_eye(proc_left_eye_crop)
+        # padded_right_eye = self.unnormalize_eye(proc_right_eye_crop)
+        # self.vis_iris_landmarks_on_eye_crop(padded_left_eye, all_left_eye_landmarks) 
+        # self.vis_iris_landmarks_on_eye_crop(padded_right_eye, all_right_eye_landmarks)
 
         # adjust the iris landmarks to the original image pixel space
         left_iris_landmarks = self.iris_landmarks_to_original_pixel_space(left_iris_landmarks, (left_eye_left, left_eye_right, left_eye_top, left_eye_bottom), (left_eye_width, left_eye_height))
         right_iris_landmarks = self.iris_landmarks_to_original_pixel_space(right_iris_landmarks, (right_eye_left, right_eye_right, right_eye_top, right_eye_bottom), (right_eye_width, right_eye_height))
+        
+        # replace the original facial landmarker eye contour landmarks with the refined ones from iris landmarker
+        
+        left_eye_contour_landmarks = left_eye_contour_landmarks[keep_eye_ids, :]
+        right_eye_contour_landmarks = right_eye_contour_landmarks[keep_eye_ids, :]
+        refined_left_eye_landmarks = self.iris_landmarks_to_original_pixel_space(left_eye_contour_landmarks, (left_eye_left, left_eye_right, left_eye_top, left_eye_bottom), (left_eye_width, left_eye_height))
+        refined_right_eye_landmarks = self.iris_landmarks_to_original_pixel_space(right_eye_contour_landmarks, (right_eye_left, right_eye_right, right_eye_top, right_eye_bottom), (right_eye_width, right_eye_height))
+        facial_landmarks[eye_landmark_ids, :] = torch.cat([refined_left_eye_landmarks, refined_right_eye_landmarks], dim=0)
+
+
+
         # only for visualization
         # self.vis_iris_landmarks_on_face(padded_face, left_iris_landmarks)
         # self.vis_iris_landmarks_on_face(padded_face, right_iris_landmarks)
@@ -409,8 +430,6 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
         # confirmed by analyzing and comparing to here https://github.com/k-m-irfan/simplified_mediapipe_face_landmarks
         # that the indices of the left iris landmarks are 468, 469, 470, 471, 472, right iris landmarks are 473, 474, 475, 476, 477
         # (i.e., ordered same as in the MediaPipe 478-landmarker model), therefore can just append in order, left first, then right
-        # IMPORTANT: SWAP LEFT AND RIGHT IRIS LANDMARKS. Left crop actually corresponds to what MP considers right eye, because of mirrorring.This is confirmed via the zoomed-in visualization
-        # comparing actual MediaPipe 478-landmarker model output to the output of our piecemeal facial then iris landmark detection approach
         all_landmarks = torch.cat([facial_landmarks, left_iris_landmarks, right_iris_landmarks], dim=0)
         
         # The z coordinate of the landmarks is scaled by the height of the image, unlike in the case of the actual MediaPipe model.
@@ -427,26 +446,22 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
         return all_landmarks, blendshapes, padded_face
 
 
-# NOTE: For eye blendshape scores to be truly reliable, we'd likely need to map the refined eye contour landmarks
-# returned by the iris landmarker to those returned by the face mesh landmarker, and then replace them
-# I think this is exactly the resource we need to do that: https://github.com/google-ai-edge/mediapipe/blob/ab1de4fced96c18b79eda4ab407b04eb08301ea4/mediapipe/graphs/iris_tracking/calculators/update_face_landmarks_calculator.cc#L250C3-L260C4
-
 ##########################################################################
 #################### TESTING PyTorchMediapipeFaceLandmarker ####################
 ##########################################################################
 
-mp = PyTorchMediapipeFaceLandmarker()
-# validation on image
-img_path = "data/obama2.jpeg"
-img = cv2.imread(img_path)
-img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = True) # emulate format that will be output by generator
-landmarks, blendshapes, padded_face = mp(img_tensor)
+# mp = PyTorchMediapipeFaceLandmarker()
+# # validation on image
+# img_path = "data/wink.jpg"
+# img = cv2.imread(img_path)
+# img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+# img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = True) # emulate format that will be output by generator
+# landmarks, blendshapes, padded_face = mp(img_tensor)
 
-# vis and compare
-padded_face = padded_face.detach().numpy().astype(np.uint8)
-blendshapes_np = blendshapes.detach().numpy()
-compare_to_real_mediapipe(landmarks, blendshapes_np, padded_face, save_landmark_comparison=True)
+# # vis and compare
+# padded_face = padded_face.detach().numpy().astype(np.uint8)
+# blendshapes_np = blendshapes.detach().numpy()
+# compare_to_real_mediapipe(landmarks, blendshapes_np, padded_face, save_landmark_comparison=True)
 # W = torch.tensor(padded_face.shape[1])
 # H = torch.tensor(padded_face.shape[0])
 # aligned3d, aligned2d  = align_landmarks_differentiable(landmarks, W, H, W, H)
