@@ -12,6 +12,9 @@ import open3d as o3d
 
 import sys
 
+sys.path.append("facenet-pytorch")
+from models.mtcnn import MTCNN
+
 sys.path.append("deconstruct-mediapipe/")
 from test_converted_model import init_mpipe_blendshapes_model, get_blendshape_score_by_index
 from blendshape_info import BLENDSHAPE_NAMES
@@ -109,31 +112,77 @@ class TFLiteModel:
         return self.interpreter.get_tensor(self.output_details[0]["index"])
 
 
-def record_video():
+def record_face_video():
     """
     Record and save a video on the webcam. Testing purposes
     """
+    mtcnn = MTCNN(thresholds=[0.4, 0.4, 0.4]) 
+        
+
     cap = cv2.VideoCapture(0)
     fourcc = cv2.VideoWriter_fourcc("M", "J", "P", "G")
-    # out = cv2.VideoWriter('output.avi', fourcc, 20.0, (640, 480))
-    out = None
-    num_frames = 100
+    out_frames = []
+    num_frames = 90
     count = 0
+    warmup_count = 0
     while True:
         ret, img = cap.read()
         if not ret:
             break
-        count += 1
-        if count < 4:
+        warmup_count += 1
+        if warmup_count < 10:
             continue
-        if out is None:
-            out = cv2.VideoWriter('test_video.mp4', fourcc, 20.0, (img.shape[1], img.shape[0]))
-        out.write(img)
+        count += 1
+        out_frames.append(img)
         if count == num_frames:
             break
-    out.release()
     cap.release()
+    print("Finished recording. Now processing...")
 
+    all_bboxes = []
+    face_frames = []
+    padding = 50
+    for frame in out_frames:
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        bboxes, probs = mtcnn.detect(frame)
+        if bboxes is None:
+            print("No face detected")
+            continue
+        face_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        face_frames.append(face_frame)
+        bbox = bboxes[0]
+        bbox = bbox + [-padding, -padding, padding, padding] # add padding to the bbox, based on observation that mediapipe landmarks extractor benefits from this
+        all_bboxes.append(bbox)
+        # x1, y1, x2, y2 = bbox.astype(int)
+        # cropped_face_tensor = img[y1:y2, x1:x2, :]
+    all_bboxes = np.array(all_bboxes)
+    widths = all_bboxes[:, 2] - all_bboxes[:, 0]
+    heights = all_bboxes[:, 3] - all_bboxes[:, 1]
+    max_width = int(np.max(widths))
+    max_height = int(np.max(heights))
+
+    print("Writing video...")
+    out = cv2.VideoWriter('test_video.mp4', fourcc, 20, (max_width, max_height))
+    for i, frame in enumerate(face_frames):
+        bbox = all_bboxes[i]
+        x1, y1, x2, y2 = bbox.astype(int)
+        cropped_face = frame[y1:y2, x1:x2, :]
+        width = x2 - x1
+        height = y2 - y1
+        padding_x = int((max_width - width) / 2)
+        padding_y = int((max_height - height) / 2)
+        x_diff = 0
+        y_diff = 0
+        if padding_x*2 + width != max_width:
+            x_diff = max_width - (padding_x*2 + width)
+        if padding_y*2 + height != max_height:
+            y_diff = max_height - (padding_y*2 + height)
+        # add the diff to left
+        padded_face = np.pad(cropped_face, ((padding_y + y_diff, padding_y), (padding_x + x_diff, padding_x), (0, 0)))
+        # print(f"{i}/{len(face_frames)}, {padded_face.shape}, {padded_face.dtype}")
+        out.write(padded_face)
+
+    out.release()
 
 def compare_to_real_mediapipe(landmarks_torch,  blendshapes, padded_face, save_landmark_comparison = False, live_demo = False):
     """

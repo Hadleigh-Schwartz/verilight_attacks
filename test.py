@@ -10,10 +10,11 @@ import cv2
 import torch
 from torch import nn
 import numpy as np
-from hadleigh_utils import pad_image, get_real_mediapipe_results, compare_to_real_mediapipe, record_video
+from hadleigh_utils import pad_image, get_real_mediapipe_results, compare_to_real_mediapipe, record_face_video
 from mp_alignment_differentiable import align_landmarks as align_landmarks_differentiable
 from mp_alignment_original import align_landmarks as align_landmarks_original
 from torchviz import make_dot
+from matplotlib import pyplot as plt
 
 sys.path.append("facenet-pytorch")
 from models.mtcnn import MTCNN
@@ -393,17 +394,73 @@ class VeriLightDynamicFeatures(nn.Module):
         cy_max = torch.max(coords[:, 1])
         bbox = torch.tensor([[cx_min, cy_min], [cx_max, cy_max]])
         return bbox
+    
+    # def visualize_signals(self, signals, landmarks_over_time, padded_faces):
+    #     signals = signals.detach().numpy()
+    #     signals_min = signals.min()
+    #     signals_max = signals.max()
+    #     for f in range(len(padded_faces)):
+    #         fig, ax = plt.subplots()
+    #         for i in range(signals.shape[0]):
+    #             signal = signals[i, :f]
+    #             ax.plot(signal, label = f"{self.target_features[i]}")
+    #         ax.set_xlim(max(0, f - 25), min(f + 25, len(padded_faces)))
+    #         ax.set_ylim(signals_min, signals_max)
+    #         ax.legend()
+    #         # get plot as image
+    #         fig = plt.gcf()
+    #         fig.canvas.draw()
+    #         fig_arr = np.array(fig.canvas.renderer.buffer_rgba())[:, :, :3]
+    #         fig_arr = fig_arr[:, :, ::-1]
 
+    #         # draw landmarks on the image
+    #         frame = padded_faces[f]
+    #         frame = np.ascontiguousarray(frame, dtype=np.uint8)
+    #         frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+    #         frame_landmarks = landmarks_over_time[f]
+    #         for t in self.target_features:
+    #             if type(t) != int:
+    #                 lm1 =  tuple(frame_landmarks[t[0]][:2].astype(np.int8))
+    #                 lm2 = tuple(frame_landmarks[t[1]][:2].astype(np.int8))
+    #                 print(lm1, lm2)
+    #                 cv2.circle(frame, lm1, 1, (0, 255, 0), -1)
+    #                 cv2.circle(frame, lm2, 1, (0, 255, 0), -1)
+    #                 cv2.line(frame,lm1, lm2, (0, 255, 0), 1)
 
+            
+    #         frame_shape = frame.shape
+    #         arr_shape = fig_arr.shape
+    #         if frame_shape[0] < arr_shape[0]:
+    #             # add padding to bottom
+    #             padding = np.zeros((arr_shape[0] - frame_shape[0], frame_shape[1], frame_shape[2]), dtype=np.uint8)
+    #             frame = np.concatenate([frame, padding], axis=0)
+    #         elif frame_shape[0] > arr_shape[0]:
+    #             padding = np.zeros((frame_shape[0] - arr_shape[0], arr_shape[1], arr_shape[2]), dtype=np.uint8)
+    #             fig_arr = np.concatenate([fig_arr, padding], axis=0)
+    #         vis = np.concatenate([frame, fig_arr], axis=1)
+
+    #         cv2.imshow("Signals", vis)
+    #         if cv2.waitKey(1) & 0xFF == ord('q'):
+    #             break
+                
     def forward(self, video_tensor):
         """
         IMPORTANT: All videos underlying the video_tensor should have the same framerate and duration.
         """
+        landmarks_over_time = [] # for vis only
+        padded_faces = [] # for vis only
         feature_values = torch.empty(video_tensor.shape[0], len(self.target_features)) # list of values for each feature in self.target_features for each frame
         for i in range(video_tensor.shape[0]):
             frame = video_tensor[i, :, :, :]
             landmarks, blendshapes, padded_face = self.mp(frame)
-            if torch.all(landmarks == -1): # no face detected
+    
+            landmarks_curr = landmarks.detach().numpy().copy()# for vis. idk why but if i dont do copy it takes on the value of the lanmdarks noramlized in alignment...
+            # print(landmarks_curr.min(), landmarks_curr.max())
+            landmarks_over_time.append(landmarks_curr) # for vis
+            padded_faces.append(padded_face.detach().numpy()) # for vis
+
+            if torch.all(landmarks == 0): # no face detected
+                print("NO FACE DETECTE, VL")
                 if i != 0: #repeat previous row, mimicing a kind of interpolation
                     feature_values[i, :] = feature_values[i-1, :]
                 else: # unfortuantely this is the first frame so we have nothing to repeat.
@@ -413,6 +470,15 @@ class VeriLightDynamicFeatures(nn.Module):
                 continue
             W, H = torch.tensor(padded_face.shape[1]), torch.tensor(padded_face.shape[0])
             _, landmark_coords_2d_aligned = align_landmarks_differentiable(landmarks, W, H, W, H)
+
+            # # draw landmarks on blank
+            # blank = np.ones((H, W, 3), dtype=np.uint8)*255
+            # for l in landmark_coords_2d_aligned:
+            #     x, y = l[:2].detach().numpy().astype(np.int8)
+            #     cv2.circle(blank, (x, y), 1, (0, 255, 0), -1)
+            # cv2.imshow("Aligned Landmarks", blank)
+            # cv2.waitKey(0)
+
             bbox = self.get_mp_bbox(landmark_coords_2d_aligned)
             bbox_W = bbox[1, 0] - bbox[0, 0]
             bbox_H = bbox[1, 1] - bbox[0, 1]
@@ -434,12 +500,14 @@ class VeriLightDynamicFeatures(nn.Module):
         # transposing gives us a tensor of shape (features, frames)
         # where each row is the featrure's signal over time
         signals = feature_values.T
+        
         # process the signals. 
         # we can't do the interpolation used in orignial code in a differentiable manner
         #, so we've approxcimately taken care of that above in the loop with the repetitions
         # standard scale each row
         signals = (signals - signals.mean(dim=1, keepdim=True)) / signals.std(dim=1, keepdim=True)
-        
+        self.visualize_signals(signals, landmarks_over_time, padded_faces) # visualization has to be done on padded faces because that's what landmarks are extracted on
+
         # apply rolling average to each row
         # https://discuss.pytorch.org/t/doing-a-very-basic-simple-moving-average/5003/6
         kernel = 2
@@ -450,9 +518,9 @@ class VeriLightDynamicFeatures(nn.Module):
         front_val = smoothed_signals[:, 0].unsqueeze(1).repeat(1, side_reps)
         back_val = smoothed_signals[:, -1].unsqueeze(1).repeat(1, signal_len_diff - side_reps)
         smoothed_signals = torch.cat([front_val, smoothed_signals, back_val], dim=1)
-        print(smoothed_signals.shape, smoothed_signals.grad_fn)
 
-        # TODO: Visualize the signals
+        # TODO: Visualize the signals before and after smoothing, alongside the video frames with the distance-related
+        # landmarks drawn on them
 
         # no need to resample because we will enforce during data processing
         # that all videos have the same framerate and duration, leading to signals of the same length
@@ -465,11 +533,11 @@ class VeriLightDynamicFeatures(nn.Module):
         # zero mean the feature vector
         dynamic_feature_vec = (dynamic_feature_vec - dynamic_feature_vec.mean()) 
 
+
         print(dynamic_feature_vec.shape, dynamic_feature_vec.grad_fn)
         
         return dynamic_feature_vec
             
-
 
 vl = VeriLightDynamicFeatures()
 # validation on video
@@ -490,8 +558,9 @@ while True:
     frames.append(img_tensor)
 frames = torch.stack(frames)
 test = vl(frames)
-# # generate computation graph visualization for verilight dynamic feature extractror
-# # sys.setrecursionlimit(10000) # to avoid RecursionError when building the graph
+
+# generate computation graph visualization for verilight dynamic feature extractror
+# sys.setrecursionlimit(10000) # to avoid RecursionError when building the graph
 # dot = make_dot(test, params=dict(vl.named_parameters()))
 # dot.format = 'png'
 # dot.render('dyn_feat_graph')
@@ -503,7 +572,7 @@ test = vl(frames)
 ##########################################################################
 
 # mp = PyTorchMediapipeFaceMesh()
-# # validation on image
+# validation on image
 # img_path = "harry.jpg"
 # img = cv2.imread(img_path)
 # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
