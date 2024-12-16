@@ -1,7 +1,5 @@
 from mp_face_landmarker import PyTorchMediapipeFaceLandmarker
 import cv2
-from mp_alignment_differentiable import align_landmarks as align_landmarks_differentiable
-from mp_alignment_original import align_landmarks as align_landmarks_original
 import torch
 import numpy as np
 from torchviz import make_dot
@@ -12,22 +10,21 @@ sys.path.append("facenet-pytorch")
 from models.mtcnn import MTCNN
 
 def img_demo(img_path):
-    mp = PyTorchMediapipeFaceLandmarker()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    mp = PyTorchMediapipeFaceLandmarker().to(device)
     # validation on image
     img = cv2.imread(img_path)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = True) # emulate format that will be output by generator
+    img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = True).to(device) # emulate format that will be output by generator
     landmarks, blendshapes, padded_face = mp(img_tensor)
 
     # vis and compare
-    padded_face = padded_face.detach().numpy().astype(np.uint8)
-    blendshapes_np = blendshapes.detach().numpy()
-    landmarks_np = landmarks.detach().numpy()
+    padded_face = padded_face.detach().cpu().numpy().astype(np.uint8)
+    blendshapes_np = blendshapes.detach().cpu().numpy()
+    landmarks_np = landmarks.detach().cpu().numpy()
     compute_method_differences(landmarks_np, blendshapes_np, padded_face)
-    compare_to_real_mediapipe(landmarks, blendshapes_np, padded_face, save_landmark_comparison=True)
-    W = torch.tensor(padded_face.shape[1])
-    H = torch.tensor(padded_face.shape[0])
-    aligned3d, aligned2d  = align_landmarks_differentiable(landmarks, W, H, W, H)
+    compare_to_real_mediapipe(landmarks, blendshapes_np, padded_face, save_landmark_comparison=True, display=False, save=True)
+
 
     # generate computation graph visualization for mediapipe facemesh 
     # dot = make_dot(landmarks, params=dict(mp.named_parameters()))

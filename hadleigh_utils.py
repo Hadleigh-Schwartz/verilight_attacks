@@ -3,7 +3,7 @@ from torchvision import transforms
 import mediapipe as mp
 import numpy as np
 import cv2
-from mp_alignment_differentiable import align_landmarks as align_landmarks_differentiable
+from mp_alignment_differentiable import MPAligner
 from mp_alignment_original import align_landmarks as align_landmarks_original
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -20,7 +20,7 @@ from test_converted_model import init_mpipe_blendshapes_model, get_blendshape_sc
 from blendshape_info import BLENDSHAPE_NAMES
 
 
-def aggregate_video_frames(video_path, max_frames = 90):
+def aggregate_video_frames(video_path, max_frames):
     """
     Aggregate a video's frames into a torch tensor of shape (frames, H, W, 3), RGB order,
     for input to the VeriLightDynamicFeatures differentiable dynamic feature extractor.
@@ -192,7 +192,8 @@ def record_face_video():
 
     out.release()
 
-def compare_to_real_mediapipe(landmarks_torch,  blendshapes, padded_face, save_landmark_comparison = False, live_demo = False):
+def compare_to_real_mediapipe(landmarks_torch,  blendshapes, padded_face, save_landmark_comparison = False, live_demo = False, 
+                              display=True, save=False):
     """
 
     Parameters:
@@ -207,7 +208,10 @@ def compare_to_real_mediapipe(landmarks_torch,  blendshapes, padded_face, save_l
     Returns:
         None
     """
-    landmarks_np_ours = landmarks_torch.clone().detach().numpy()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    aligner = MPAligner().to(device)
+
+    landmarks_np_ours = landmarks_torch.clone().detach().cpu().numpy()
     real_mp_landmarks, real_mp_blendshapes = get_real_mediapipe_results(padded_face)
     if real_mp_landmarks is None and real_mp_blendshapes is None:
         print("NO FACE DETECTED BY REAL MEDIAPIPE")
@@ -217,7 +221,7 @@ def compare_to_real_mediapipe(landmarks_torch,  blendshapes, padded_face, save_l
     aligned3d_real, aligned2d_real = align_landmarks_original(real_mp_landmarks, W, H, W, H)
     aligned3d_real = np.array(aligned3d_real)
     aligned2d_real = np.array(aligned2d_real)
-    aligned3d_ours, aligned2d_ours = align_landmarks_differentiable(landmarks_torch, W, H, W, H)
+    aligned3d_ours, aligned2d_ours = aligner(landmarks_torch, W, H, W, H)
 
     real_mp_blendshapes = real_mp_blendshapes.round(3)
     blendshapes = blendshapes.round(3)
@@ -320,12 +324,19 @@ def compare_to_real_mediapipe(landmarks_torch,  blendshapes, padded_face, save_l
         fig_arr = np.pad(fig_arr, ((0, padding), (0, 0), (0, 0)), mode='constant')
 
     img = np.hstack((annotated_ours, annotated_real, fig_arr))
-    cv2.imshow("Final Comp", img)
-    if live_demo:
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            return
-    else:
-        cv2.waitKey(0)
+
+    if display:
+        cv2.imshow("Final Comp", img)
+        if live_demo:
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                return
+        else:
+            cv2.waitKey(0)
+    if save:
+        cv2.imwrite("comparison.png", img)
+
+
+
 
 def compute_method_differences(landmarks, blendshapes, padded_face):
     real_mp_landmarks, real_mp_blendshapes = get_real_mediapipe_results(padded_face)

@@ -11,8 +11,6 @@ import torch
 from torch import nn
 import numpy as np
 from hadleigh_utils import pad_image
-from mp_alignment_differentiable import align_landmarks as align_landmarks_differentiable
-from mp_alignment_original import align_landmarks as align_landmarks_original
 from matplotlib import pyplot as plt
 from eye_landmarks_ids import eye_landmark_ids
 
@@ -33,23 +31,25 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
     def __init__(self):
         super(PyTorchMediapipeFaceLandmarker, self).__init__()
         
+        self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
         # face detection
-        self.mtcnn = MTCNN(thresholds = [0.4, 0.4, 0.4]) # more generous thresholds to ensure face is detected
+        self.mtcnn = MTCNN(thresholds = [0.4, 0.4, 0.4], device = self.device) # more generous thresholds to ensure face is detected
         
         # facial landmarks
-        self.facelandmarker = FacialLM_Model()
+        self.facelandmarker = FacialLM_Model().to(self.device)
         self.facelandmarker_weights = torch.load('mediapipe_pytorch/facial_landmarks/model_weights/facial_landmarks.pth')
         self.facelandmarker.load_state_dict(self.facelandmarker_weights)
         self.facelandmarker = self.facelandmarker.eval() 
 
         # iris landmarks
-        self.irislandmarker = IrisLM()
+        self.irislandmarker = IrisLM().to(self.device)
         self.irislandmarker_weights = torch.load('mediapipe_pytorch/iris/model_weights/irislandmarks.pth')
         self.irislandmarker.load_state_dict(self.irislandmarker_weights)
         self.irislandmarker = self.irislandmarker.eval() 
 
         # blendshapes from facial and iris landmarks
-        self.blendshape_model = MediaPipeBlendshapesMLPMixer()
+        self.blendshape_model = MediaPipeBlendshapesMLPMixer().to(self.device)
         self.blendshape_model.load_state_dict(torch.load("deconstruct-mediapipe/face_blendshapes.pth"))
 
     def detect_face(self, img, padding = 50):

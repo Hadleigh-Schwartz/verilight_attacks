@@ -5,8 +5,7 @@ import torch
 from torch import nn
 import numpy as np
 from hadleigh_utils import pad_image, get_real_mediapipe_results, compare_to_real_mediapipe, record_face_video, compute_method_differences
-from mp_alignment_differentiable import align_landmarks as align_landmarks_differentiable
-from mp_alignment_original import align_landmarks as align_landmarks_original
+from mp_alignment_differentiable import MPAligner
 from torchviz import make_dot
 from matplotlib import pyplot as plt
 from mp_face_landmarker import PyTorchMediapipeFaceLandmarker
@@ -82,10 +81,16 @@ class VeriLightDynamicFeatures(nn.Module):
     def __init__(self):
         super(VeriLightDynamicFeatures, self).__init__()
 
-        self.mp = PyTorchMediapipeFaceLandmarker()
+        # get device of model
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        self.mp = PyTorchMediapipeFaceLandmarker().to(self.device)
 
         self.target_features = [(0, 17), (40, 17), (270, 17), (0, 91), (0, 321),
                                  6, 7, 8, 9, 10, 11, 12, 23, 25, 50, 51] 
+        
+
+        self.aligner = MPAligner().to(self.device)
     
     def get_mp_bbox(self, coords):
         """
@@ -115,10 +120,10 @@ class VeriLightDynamicFeatures(nn.Module):
             frame = video_tensor[i, :, :, :]
             landmarks, blendshapes, padded_face = self.mp(frame)
 
-            landmarks_curr = landmarks.detach().numpy().copy()# for vis. idk why but if i dont do copy it takes on the value of the lanmdarks noramlized in alignment...
+            landmarks_curr = landmarks.detach().cpu().numpy().copy()# for vis. idk why but if i dont do copy it takes on the value of the lanmdarks noramlized in alignment...
             landmarks_over_time.append(landmarks_curr)
-            padded_faces.append(padded_face.detach().numpy()) # for vis 
-            blendshapes_over_time.append(blendshapes.detach().numpy())
+            padded_faces.append(padded_face.detach().cpu().numpy()) # for vis 
+            blendshapes_over_time.append(blendshapes.detach().cpu().numpy())
 
             if torch.all(landmarks == 0): # no face detected
                 if i != 0: #repeat previous row, mimicing a kind of interpolation
@@ -130,7 +135,7 @@ class VeriLightDynamicFeatures(nn.Module):
                 continue
 
             W, H = torch.tensor(padded_face.shape[1]), torch.tensor(padded_face.shape[0])
-            _, landmark_coords_2d_aligned = align_landmarks_differentiable(landmarks, W, H, W, H)
+            _, landmark_coords_2d_aligned = self.aligner(landmarks, W, H, W, H)
 
             # # draw landmarks on blank
             # blank = np.ones((H, W, 3), dtype=np.uint8)*255
