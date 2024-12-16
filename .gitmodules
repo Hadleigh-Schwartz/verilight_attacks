@@ -1,3 +1,9 @@
 [submodule "facenet-pytorch"]
 	path = facenet-pytorch
 	url = https://github.com/Hadleigh-Schwartz/facenet-pytorch.git
+[submodule "mediapipe_pytorch"]
+	path = mediapipe_pytorch
+	url = https://github.com/Hadleigh-Schwartz/mediapipe_pytorch.git
+[submodule "deconstruct-mediapipe"]
+	path = deconstruct-mediapipe
+	url = https://github.com/Hadleigh-Schwartz/deconstruct-mediapipe.git
