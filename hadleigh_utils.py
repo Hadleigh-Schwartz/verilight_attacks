@@ -9,6 +9,7 @@ from mp_alignment_original import align_landmarks as align_landmarks_original
 import pandas as pd
 import matplotlib.pyplot as plt
 import open3d as o3d    
+import torch
 
 import sys
 
@@ -18,6 +19,28 @@ from models.mtcnn import MTCNN
 sys.path.append("deconstruct-mediapipe/")
 from test_converted_model import init_mpipe_blendshapes_model, get_blendshape_score_by_index
 from blendshape_info import BLENDSHAPE_NAMES
+
+
+def aggregate_video_frames(video_path, max_frames = 90):
+    """
+    Aggregate a video's frames into a torch tensor of shape (frames, H, W, 3), RGB order,
+    for input to the VeriLightDynamicFeatures differentiable dynamic feature extractor.
+    """
+    cap = cv2.VideoCapture(video_path)
+    frames = []
+    frame_num = 0
+    while True:
+        ret, img = cap.read()
+        if not ret:
+            break 
+        frame_num += 1
+        if frame_num > max_frames:
+            break
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = True)
+        frames.append(img_tensor)
+    frames = torch.stack(frames)
+    return frames
 
 def pad_image(im, desired_size=192):
     """
@@ -185,8 +208,6 @@ def record_face_video():
 
     out.release()
 
-# record_face_video()
-
 def compare_to_real_mediapipe(landmarks_torch,  blendshapes, padded_face, save_landmark_comparison = False, live_demo = False):
     """
 
@@ -321,3 +342,18 @@ def compare_to_real_mediapipe(landmarks_torch,  blendshapes, padded_face, save_l
             return
     else:
         cv2.waitKey(0)
+
+def compute_method_differences(landmarks, blendshapes, padded_face):
+    real_mp_landmarks, real_mp_blendshapes = get_real_mediapipe_results(padded_face)
+    if real_mp_landmarks is None and real_mp_blendshapes is None:
+        print("NO FACE DETECTED BY REAL MEDIAPIPE")
+        return
+    real_mp_blendshapes = real_mp_blendshapes.round(3)
+    blendshapes = blendshapes.round(3)
+
+    landmarks_diff = np.mean(np.abs(real_mp_landmarks - landmarks))
+    blendshapes_diff = np.mean(np.abs(real_mp_blendshapes - blendshapes))
+    return landmarks_diff, blendshapes_diff
+
+
+# record_face_video()
