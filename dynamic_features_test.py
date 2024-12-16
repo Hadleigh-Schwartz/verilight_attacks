@@ -4,10 +4,15 @@ import torch
 import cv2
 from torchviz import make_dot
 from hadleigh_utils import aggregate_video_frames
+import matplotlib.pyplot as plt
 
 frames = aggregate_video_frames("data/test_video1.mp4")
 vl = VeriLightDynamicFeatures()
 dynamic_feature_vec = vl(frames)
+
+dynamic_feature_vec_np = dynamic_feature_vec.detach().numpy()
+plt.plot(dynamic_feature_vec_np)
+plt.savefig("dynamic_feature_vec.png")
 
 # save as np
 # np.save("test_dynamic_feature_vec.npy", dynamic_feature_vec.detach().numpy())
