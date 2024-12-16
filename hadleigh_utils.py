@@ -3,7 +3,6 @@ from torchvision import transforms
 import mediapipe as mp
 import numpy as np
 import cv2
-import tensorflow as tf
 from mp_alignment_differentiable import align_landmarks as align_landmarks_differentiable
 from mp_alignment_original import align_landmarks as align_landmarks_original
 import pandas as pd
@@ -119,21 +118,6 @@ def get_real_mediapipe_results(img):
     blendshapes_np = blendshapes_np[0, :]
     return landmarks_np, blendshapes_np
     
-
-class TFLiteModel:
-    def __init__(self, model_path: str):
-        self.interpreter = tf.lite.Interpreter(model_path)
-        self.interpreter.allocate_tensors()
-        self.input_details = self.interpreter.get_input_details()
-        self.output_details = self.interpreter.get_output_details()
-
-    def predict(self, *data_args):
-        assert len(data_args) == len(self.input_details)
-        for data, details in zip(data_args, self.input_details):
-            self.interpreter.set_tensor(details["index"], data)
-        self.interpreter.invoke()
-        return self.interpreter.get_tensor(self.output_details[0]["index"])
-
 
 def record_face_video():
     """
