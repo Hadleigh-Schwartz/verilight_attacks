@@ -1,9 +1,0 @@
-[submodule "deconstruct-mediapipe"]
-	path = deconstruct-mediapipe
-	url = https://github.com/nlml/deconstruct-mediapipe.git
-[submodule "mediapipe_pytorch"]
-	path = mediapipe_pytorch
-	url = https://github.com/tiqq111/mediapipe_pytorch.git
-[submodule "facenet-pytorch"]
-	path = facenet-pytorch
-	url = https://github.com/timesler/facenet-pytorch.git
