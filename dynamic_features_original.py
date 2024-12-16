@@ -4,7 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import random
-import crc8
 
 from insightface.app import FaceAnalysis
 from insightface.data import get_image as ins_get_image
@@ -14,15 +13,12 @@ from mediapipe.tasks.python import vision
 from mediapipe import solutions
 from mediapipe.framework.formats import landmark_pb2
 
-
 import mp_alignment
 
 from signal_utils import single_feature_signal_processing, rolling_average
-from rp_lsh import hash_point
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 import config
-from bitstring_utils import pad_bitstring, bitstring_to_bytes, bytes_to_bitstring
 
 import sys
 if sys.platform == 'linux':
@@ -38,50 +34,9 @@ else:
 from feature_vis import annotate_frame, resize_img
 from mediapipe_vis import draw_landmarks_on_image
 
-def digest_extraction_log(message, log_level):
-    """
-    Logging function for the digest extraction process.
 
-    Parameters:
-        message (str): The message to log
-        log_level (str): The log level of the message. Can be "DEBUG", "INFO", "WARNING", or "ERROR"
+def create_dynamic_hash_from_dynamic_features(dynamic_features):
     
-    Returns:
-        None
-    """
-    if log_level == "DEBUG":
-        if config.LOG_LEVEL == "DEBUG":
-            print("FEATURE EXTRACTOR [DEBUG]: {}".format(message))
-    elif log_level == "INFO":
-        if config.LOG_LEVEL == "DEBUG" or config.LOG_LEVEL == "INFO":
-            print("FEATURE EXTRACTOR [INFO]: {}".format(message))
-    elif log_level == "WARNING":
-        if config.LOG_LEVEL == "DEBUG" or config.LOG_LEVEL == "INFO" or config.LOG_LEVEL == "WARNING":
-            print("FEATURE EXTRACTOR [WARNING]: {}".format(message))
-    elif log_level == "ERROR":
-        print("FEATURE EXTRACTOR[ERROR]: {}".format(message))
-
-
-def create_dynamic_hash_from_dynamic_features(dynamic_features, dynamic_hash_fam, dynamic_hash_funcs):
-    """
-    Creates our dynamic hash from the dynamic features. This involves converting the dynamic features into a signal and then 
-    applying the locality sensitive hashing.
-
-    Parameters:
-        dynamic_features (list): List of N lists, where N is the number of frames. Each of the N elements is 
-        itself a list, where each element is the value of one feature. For example, the dynamic features for
-        3 frames, using 5 blendshapes/distances, could something like
-        [[0.02, 0.5, 0.6, 0.03, 0.2], [0.02, 0.3, 0.3, 0.03, 0.18], [0.02, 0.52, 0.4, 0.06, 0.2]]
-
-        dynamic_hash_fam (CosineHashFamily object): The LSH family object used to hash the dynamic features. See rp_lsh.py for more details.
-        dynamic_hash_funcs (list): The random projection functions used to hash the dynamic features. See rp_lsh.py for more details.
-    
-    Returns:
-        dynamic_feat_hash (str): The hash of the dynamic features
-        signals (list): The signals for each feature
-        proc_signals (list): The processed signals for each feature
-        concat_processed_signal (list): The concatenated processed signal (i.e., concatenation of all processed signals, zero meaned)
-    """
     #make features into signal(s)
     signals = [[] for i in range(len(config.target_features))]
     for frame_feats in dynamic_features:
@@ -99,93 +54,9 @@ def create_dynamic_hash_from_dynamic_features(dynamic_features, dynamic_hash_fam
     concat_processed_signal = np.array(concat_processed_signal, dtype=np.float64)
     concat_processed_signal -= concat_processed_signal.mean()   #must zero mean it so that the Pearson correlation equals the cosine similarity
 
-    if np.count_nonzero(concat_processed_signal) == 0: #if signal is all zeros, return random bitstream "cover traffic" as the dyanmic hash, note this in log
-        dynamic_feat_hash = pad_bitstring(format(random.getrandbits(config.dynamic_hash_k), '0b'), config.dynamic_hash_k)
-    else:
-        dynamic_feat_hash = hash_point(dynamic_hash_fam, dynamic_hash_funcs, concat_processed_signal)
-    
-    return dynamic_feat_hash, signals, proc_signals, concat_processed_signal
+    return signals, proc_signals, concat_processed_signal
 
-def create_digest_from_features(dynamic_features, identity_features, feature_seq_num, output_path = None, img_nums = None):
-    """
-    Given dynamic features, identity features, and feature_seq_num, returns the raw bits making up the digest (i.e., digest payload)
-    that is embedded into the video.
-    Specifically, this includes the feature seq num, concatenated dynamic feature signal hash and identity feature hash. 
-    Optionally dumps the hashes, intermediate signals, and img_nums to a pickle at output_path.
-    The parameters and LSH families used for hashing are specified in the config file. It's important tha the same LSH families
-    used during the live embedding are used for verification.
-
-    NOTE: Re CRC placement. In the paper we state that the checksum is added at the end of the coded signature. This is because, in practice, it would probably be
-    good to have the unit ID and date ordinal also verified by the checksum, and not to even bother decrpyting the signature if the checksum is wrong.
-    In this implementation, however, the checksum is added to the end of the digest, which isn't encrypted yet. 
-    This is a slight error, but it doesn't change the results, since we don't actually use the unit ID and date ordinal in our verification process.
-
-    Parameters:
-        dynamic_features (list): List of N lists, where N is the number of frames. Each of the N elements is 
-        itself a list, where each element is the value of one feature. For example, the dynamic features for
-        3 frames, using 5 blendshapes/distances, could something like
-        [[0.02, 0.5, 0.6, 0.03, 0.2], [0.02, 0.3, 0.3, 0.03, 0.18], [0.02, 0.52, 0.4, 0.06, 0.2]]
-
-        identity_features (numpy array): the 512-dimensional ArcFace embedding
-
-        output_path (str): Path to save pickle of features/signals to, if desired
-
-        img_nums (list): List of image numbers corresponding to each frame in dynamic_features. Used for visualization purposes.
-    
-    Returns:
-        payload (str): The bits, as string of '0' and '1' making up the digest payload
-        proc_signals (list): The processed signals for each feature
-        concat_processed_signal (list): The concatenated processed signal (i.e., concatenation of all processed signals, zero meaned)
-    """
-
-    #hash the dynamic feature signal and identity feature embedding, if possible
-    dynamic_feat_hash, signals, proc_signals, concat_processed_signal = create_dynamic_hash_from_dynamic_features(dynamic_features, config.dynamic_fam, config.dynamic_hash_funcs)
-    if np.count_nonzero(identity_features) == 0:
-        id_feat_hash = pad_bitstring(format(random.getrandbits(config.identity_hash_k), '0b'), config.identity_hash_k) #if signal is all zeros, return random bitstream "cover traffic" as the dyanmic hash, note this in log
-    else:
-        id_feat_hash = hash_point(config.id_fam, config.id_hash_funcs, identity_features)
-    
-    if output_path is not None:
-        with open(output_path, "wb") as pklfile:
-            pickle.dump(img_nums, pklfile)
-            pickle.dump(signals, pklfile)
-            pickle.dump(concat_processed_signal, pklfile)
-            pickle.dump(identity_features, pklfile)
-            pickle.dump(dynamic_feat_hash, pklfile)
-            pickle.dump(id_feat_hash, pklfile)
-    
-    #package the stuff 
-    bin_seq_num = np.binary_repr(feature_seq_num, width = config.bin_seq_num_size)
-    if feature_seq_num % 2 == 0: #use the correct half of the ID hash based on the sequence number. digest_process will ensure that the identity feature repeats every two times
-        id_feat_hash_half = id_feat_hash[:config.identity_hash_k//2]
-    else:
-        id_feat_hash_half = id_feat_hash[config.identity_hash_k//2:]
-    payload_p1 = bin_seq_num + id_feat_hash_half + dynamic_feat_hash
-
-    # add a checksum
-    payload_bytes = bitstring_to_bytes(payload_p1)
-    checksum_gen = crc8.crc8()
-    checksum_gen.update(payload_bytes)
-    checksum = checksum_gen.digest()
-    checksum_bits = bytes_to_bitstring(checksum)
-    payload = payload_p1 + checksum_bits
-    return payload, proc_signals, concat_processed_signal
-
-    
-class IdentityExtractor(object):
-    def __init__(self):
-        sys.stdout = open(os.devnull, "w")
-        self.extractor = FaceAnalysis(providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
-        self.extractor.prepare(ctx_id=0, det_size=(640, 640))         
-        sys.stdout = sys.__stdout__
-
-    def extract(self, frame):
-        faces = self.extractor.get(frame)
-        if len(faces) == 0:
-            return None
-        e = faces[0]['embedding']
-        normed_e = e / np.linalg.norm(e)
-        return normed_e
+    # dynamic_feat_hash, signals, proc_signals, concat_processed_signal = create_dynamic_hash_from_dynamic_features(dynamic_features, config.dynamic_fam, config.dynamic_hash_funcs)
         
 class MPExtractor(object):
     def __init__(self):
@@ -327,33 +198,8 @@ class VideoDigestExtractor(object):
     """
     def __init__(self, video_path):
         self.mp_extractor = MPExtractor()
-        self.id_extractor = IdentityExtractor()
         self.video_path = video_path
-    
-    def get_id_features_hash(self, start_frame):
-        cap = cv2.VideoCapture(self.video_path)
-        frame_num = 0
-        identity_features = None
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
-            if not (frame_num >= start_frame):
-                frame_num += 1
-                continue
-            if frame_num == start_frame:
-                identity_features = self.id_extractor.extract(frame)
-                break
-
-        id_fam = config.id_fam
-        id_hash_funcs = config.id_hash_funcs
-
-        if identity_features is None:
-            id_feat_hash = None
-        else:
-            id_feat_hash = hash_point(id_fam, id_hash_funcs, identity_features)
-        return id_feat_hash, identity_features
-
+ 
     
     def extract_from_video_slice(self, start_frame, end_frame, seq_num, vis_output_path = None):
         """
