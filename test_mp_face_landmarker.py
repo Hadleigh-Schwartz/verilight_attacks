@@ -11,12 +11,12 @@ from models.mtcnn import MTCNN
 
 def img_demo(img_path):
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    mp = PyTorchMediapipeFaceLandmarker(device, long_range_face_detect=True, short_range_face_detect=False).to(device)
+    mp = PyTorchMediapipeFaceLandmarker(device, long_range_face_detect=False, short_range_face_detect=True).to(device)
     # validation on image
     img = cv2.imread(img_path)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = True).to(device) # emulate format that will be output by generator
-    landmarks, blendshapes, padded_face, bbox = mp(img_tensor)
+    landmarks, blendshapes, padded_face = mp(img_tensor)
 
     # vis and compare
     padded_face = padded_face.detach().cpu().numpy().astype(np.uint8)
@@ -26,16 +26,16 @@ def img_demo(img_path):
 
 
     # generate computation graph visualization for mediapipe facemesh 
-    # dot = make_dot(landmarks, params=dict(mp.named_parameters()))
-    # dot.format = 'png'
-    # dot.render('facemesh_graph')
+    dot = make_dot(landmarks, params=dict(mp.named_parameters()))
+    dot.format = 'png'
+    dot.render('facemesh_graph')
 
 
 
 def webcam_demo():
     # webcam live demo
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    mp = PyTorchMediapipeFaceLandmarker(device).to(device)
+    mp = PyTorchMediapipeFaceLandmarker(device, short_range_face_detect=False).to(device)
     cap = cv2.VideoCapture(0)
     count = 0
     while True:
@@ -55,9 +55,10 @@ def webcam_demo():
         # x1, y1, x2, y2 = bbox.astype(int)
         # img = img[y1:y2, x1:x2, :]
         img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = False).to(device) # emulate format that will be output by generator
-        landmarks, blendshapes, padded_face, bbox = mp(img_tensor)
+        landmarks, blendshapes, padded_face = mp(img_tensor)
         padded_face = padded_face.detach().numpy().astype(np.uint8)
         blendshapes_np = blendshapes.detach().numpy()
         compare_to_real_mediapipe(landmarks, blendshapes_np, padded_face, live_demo = True)
 
-webcam_demo()
+# webcam_demo()
+img_demo("data/obama2.jpg")

@@ -16,7 +16,8 @@ from models.mtcnn import MTCNN
 def visualize_signals(signals, padded_faces, landmarks_over_time):
     target_features = [(0, 17), (40, 17), (270, 17), (0, 91), (0, 321),
                                  6, 7, 8, 9, 10, 11, 12, 23, 25, 50, 51] 
-    vis_feature_ids = [0, 1, 2, 3, 4]
+    # vis_feature_ids = [0, 1, 2, 3, 4]
+    vis_feature_ids = [8, 9]
     signals_min = signals.min()
     signals_max = signals.max()
     out = None
@@ -78,13 +79,15 @@ def compute_perframe_method_differences(landmarks_over_time, blendshapes_over_ti
 
 
 class VeriLightDynamicFeatures(nn.Module):
-    def __init__(self):
+    def __init__(self, device = "cpu", long_range_face_detect = False, short_range_face_detect = False):
         super(VeriLightDynamicFeatures, self).__init__()
 
-        # get device of model
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if device == "cuda":
+            self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        else:
+            self.device = torch.device('cpu')
 
-        self.mp = PyTorchMediapipeFaceLandmarker().to(self.device)
+        self.mp = PyTorchMediapipeFaceLandmarker(device, long_range_face_detect, short_range_face_detect)
 
         self.target_features = [(0, 17), (40, 17), (270, 17), (0, 91), (0, 321),
                                  6, 7, 8, 9, 10, 11, 12, 23, 25, 50, 51] 
@@ -118,7 +121,7 @@ class VeriLightDynamicFeatures(nn.Module):
         feature_values = torch.empty(video_tensor.shape[0], len(self.target_features)) # list of values for each feature in self.target_features for each frame
         for i in range(video_tensor.shape[0]):
             frame = video_tensor[i, :, :, :]
-            landmarks, blendshapes, padded_face, bbox = self.mp(frame)
+            landmarks, blendshapes, padded_face = self.mp(frame)
 
             landmarks_curr = landmarks.detach().cpu().numpy().copy()# for vis. idk why but if i dont do copy it takes on the value of the lanmdarks noramlized in alignment...
             landmarks_over_time.append(landmarks_curr)
@@ -196,7 +199,7 @@ class VeriLightDynamicFeatures(nn.Module):
         back_val = smoothed_signals[:, -1].unsqueeze(1).repeat(1, signal_len_diff - side_reps)
         smoothed_signals = torch.cat([front_val, smoothed_signals, back_val], dim=1)
 
-        visualize_signals(smoothed_signals.detach().cpu().numpy(), padded_faces, landmarks_over_time) # visualization has to be done on padded faces because that's what landmarks are extracted on
+        # visualize_signals(smoothed_signals.detach().cpu().numpy(), padded_faces, landmarks_over_time) # visualization has to be done on padded faces because that's what landmarks are extracted on
         # compute_perframe_method_differences(landmarks_over_time, blendshapes_over_time, padded_faces)
 
         # concatenate all the signals into a single feature vector

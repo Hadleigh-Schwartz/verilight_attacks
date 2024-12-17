@@ -31,7 +31,18 @@ from blendshape_info import BLENDSHAPE_MODEL_LANDMARKS_SUBSET,  BLENDSHAPE_NAMES
 from mlp_mixer import MediaPipeBlendshapesMLPMixer
 
 class PyTorchMediapipeFaceLandmarker(nn.Module):
-    def __init__(self, device = "cpu", long_range_face_detect = True, short_range_face_detect = True):
+    def __init__(self, device = "cpu", long_range_face_detect = False, short_range_face_detect = False):
+        """
+        Parameters:
+            device: str
+                The device to run the model on, either "cuda" or "cpu"
+            long_range_face_detect: bool
+                Whether to use MTCNN for long-range face detection for cropping. Note: This is non-differentiable.
+            short_range_face_detect: bool
+                Whether to use BlazeFace for short-range face detection for cropping. This is differentiable and is the detector used under
+                the hood by the actual MediaPipe model, but it doesn't have as good accuracy as MTCNN. It sometimes cuts off
+                part of the face, which makes the predicted landmarks quite bad.
+        """
         super(PyTorchMediapipeFaceLandmarker, self).__init__()
         
         self.long_range_face_detect = long_range_face_detect
@@ -307,7 +318,7 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
         blendshapes: torch.Tensor
             52 tensor of blendshape scores
         """
-        
+
         if self.long_range_face_detect:
             long_range_cropped_face = self.detect_face(img_tensor)
             if torch.all(long_range_cropped_face == 0):
@@ -319,11 +330,15 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
                 img_tensor = long_range_cropped_face
         
         if self.short_range_face_detect:
-            bbox, img_tensor = self.blaze_face.predict_on_image(img_tensor)
-        else:
-            bbox = None
+            short_range_cropped_face = self.blaze_face.predict_on_image(img_tensor)
+            if torch.all(short_range_cropped_face == 0):
+                landmarks_zeroes = torch.zeros(478, 3)
+                blendshapes_zeroes = torch.zeros(52)
+                face_zeroes = torch.zeros(img_tensor.shape)
+                return landmarks_zeroes, blendshapes_zeroes, face_zeroes
+            else:
+                img_tensor = short_range_cropped_face
 
-        print(img_tensor.shape)
         proc_face = self.preprocess_face_for_landmark_detection(img_tensor)
 
         # run facial landmark detection
@@ -379,7 +394,8 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
         and here https://github.com/google-ai-edge/mediapipe/blob/master/docs/solutions/iris.md 
         this is how the eventual eye-related 478-landmarkers in MP implementation are obtained.
         """
-        keep_eye_ids = [i for i in range(0, 48)] + [i for i in range(54,63)] # eye landmarks to refine based on iris landmarker output, in case you want to only replace some
+        # eye landmarks to refine based on iris landmarker output, in case you want to only replace some
+        keep_eye_ids = [i for i in range(71)]#[i for i in range(0, 48)] + [i for i in range(54,63)] # dont use eyebrows stuff
         
         # debugging only
         # all_left_eye_landmarks = torch.cat([left_eye_contour_landmarks[keep_eye_ids], left_iris_landmarks], dim=0)
@@ -429,6 +445,6 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
         # clip blendshapes to be between 0 and 1 because the real MP does not predict values outside this range
         blendshapes = torch.clamp(blendshapes, 0, 1) 
 
-        return all_landmarks, blendshapes, padded_face, bbox
+        return all_landmarks, blendshapes, padded_face
 
 

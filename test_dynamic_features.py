@@ -6,8 +6,8 @@ from torchviz import make_dot
 from hadleigh_utils import aggregate_video_frames
 import matplotlib.pyplot as plt
 
-frames = aggregate_video_frames("data/test_video1.mp4")
-vl = VeriLightDynamicFeatures()
+frames = aggregate_video_frames("data/test_video1.mp4", 300)
+vl = VeriLightDynamicFeatures(long_range_face_detect=False, short_range_face_detect=True)
 dynamic_feature_vec = vl(frames)
 
 dynamic_feature_vec_np = dynamic_feature_vec.detach().numpy()

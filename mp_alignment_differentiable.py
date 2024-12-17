@@ -136,8 +136,10 @@ class MPAligner(nn.Module):
 
 
     def unproject_xy(self, pcf, landmarks):
-        landmarks[0, :] = landmarks[0, :] * landmarks[2, :] / pcf.near
-        landmarks[1, :] = landmarks[1, :] * landmarks[2, :] / pcf.near
+        landmark_depths = landmarks[2, :]
+        unprojected_landmarks = landmarks.clone()
+        unprojected_landmarks[0, :] = landmarks[0, :] * landmark_depths / pcf.near
+        unprojected_landmarks[1, :] = landmarks[1, :] * landmark_depths / pcf.near
 
         return landmarks
 

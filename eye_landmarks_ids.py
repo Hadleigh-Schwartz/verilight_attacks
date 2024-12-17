@@ -63,12 +63,12 @@ eye_landmark_ids = [   # Left eye
     189,
     # halo x4 upper contour (no lower because of mesh structure)
     # or eyebrow inner contour
-    # 35, #48
-    # 124,
-    # 46,
-    # 53,
-    # 52,
-    # 65,
+    35, #48
+    124,
+    46,
+    53,
+    52,
+    65,
     # halo x5 lower contour
     143,#54
     111,
@@ -81,14 +81,14 @@ eye_landmark_ids = [   # Left eye
     245,
     # halo x5 upper contour (excluding corners)
     # or eyebrow outer contour
-    # 156, # 63
-    # 70,
-    # 63,
-    # 105,
-    # 66,
-    # 107,
-    # 55,
-    # 193,
+    156, # 63
+    70,
+    63,
+    105,
+    66,
+    107,
+    55,
+    193,
 
     # # Right eye
     # eye lower contour
@@ -147,12 +147,12 @@ eye_landmark_ids = [   # Left eye
     413,
     # halo x4 upper contour (no lower because of mesh structure)
     # or eyebrow inner contour
-    # 265,
-    # 353,
-    # 276,
-    # 283,
-    # 282,
-    # 295,
+    265,
+    353,
+    276,
+    283,
+    282,
+    295,
     # halo x5 lower contour
     372,
     340,
@@ -165,12 +165,12 @@ eye_landmark_ids = [   # Left eye
     465,
     # halo x5 upper contour (excluding corners)
     # or eyebrow outer contour
-    # 383,
-    # 300,
-    # 293,
-    # 334,
-    # 296,
-    # 336,
-    # 285,
-    # 417
+    383,
+    300,
+    293,
+    334,
+    296,
+    336,
+    285,
+    417
 ]
