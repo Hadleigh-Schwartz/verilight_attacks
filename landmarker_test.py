@@ -60,4 +60,4 @@ def webcam_demo():
         compare_to_real_mediapipe(landmarks, blendshapes_np, padded_face, live_demo = True)
 
 
-img_demo("data/obama2.jpg")
+img_demo("data/wink.jpg")

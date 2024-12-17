@@ -16,7 +16,7 @@ from models.mtcnn import MTCNN
 def visualize_signals(signals, padded_faces, landmarks_over_time):
     target_features = [(0, 17), (40, 17), (270, 17), (0, 91), (0, 321),
                                  6, 7, 8, 9, 10, 11, 12, 23, 25, 50, 51] 
-    vis_feature_ids = [5, 6, 7, 8, 9]
+    vis_feature_ids = [0, 1, 2, 3, 4]
     signals_min = signals.min()
     signals_max = signals.max()
     out = None
@@ -196,7 +196,7 @@ class VeriLightDynamicFeatures(nn.Module):
         back_val = smoothed_signals[:, -1].unsqueeze(1).repeat(1, signal_len_diff - side_reps)
         smoothed_signals = torch.cat([front_val, smoothed_signals, back_val], dim=1)
 
-        # visualize_signals(smoothed_signals.detach().numpy(), padded_faces, landmarks_over_time) # visualization has to be done on padded faces because that's what landmarks are extracted on
+        visualize_signals(smoothed_signals.detach().cpu().numpy(), padded_faces, landmarks_over_time) # visualization has to be done on padded faces because that's what landmarks are extracted on
         # compute_perframe_method_differences(landmarks_over_time, blendshapes_over_time, padded_faces)
 
         # concatenate all the signals into a single feature vector
