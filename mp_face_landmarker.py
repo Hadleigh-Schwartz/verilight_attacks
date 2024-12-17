@@ -17,6 +17,9 @@ from eye_landmarks_ids import eye_landmark_ids
 sys.path.append("facenet-pytorch")
 from models.mtcnn import MTCNN
 
+sys.path.append("BlazeFace-PyTorch")
+from blazeface import BlazeFace
+
 sys.path.append("mediapipe_pytorch/facial_landmarks")
 from facial_lm_model import FacialLM_Model 
 
@@ -28,14 +31,33 @@ from blendshape_info import BLENDSHAPE_MODEL_LANDMARKS_SUBSET,  BLENDSHAPE_NAMES
 from mlp_mixer import MediaPipeBlendshapesMLPMixer
 
 class PyTorchMediapipeFaceLandmarker(nn.Module):
-    def __init__(self):
+    def __init__(self, device = "cpu", long_range_face_detect = True, short_range_face_detect = True):
         super(PyTorchMediapipeFaceLandmarker, self).__init__()
         
-        self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        self.long_range_face_detect = long_range_face_detect
+        self.short_range_face_detect = short_range_face_detect
 
-        # face detection
-        self.mtcnn = MTCNN(thresholds = [0.4, 0.4, 0.4], device = self.device) # more generous thresholds to ensure face is detected
+        if device == "cuda":
+            self.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        else:
+            self.device = torch.device('cpu')
+        print("Initializing PyTorchMediapipeFaceLandmarker on device:", self.device)
+
+        if self.long_range_face_detect:
+            # face detection
+            self.mtcnn = MTCNN(thresholds = [0.4, 0.4, 0.4], device = self.device) # more generous thresholds to ensure face is detected
         
+        if self.short_range_face_detect:
+            # blazeface face detection
+            self.blaze_face = BlazeFace().to(self.device)
+            self.blaze_face.load_weights("BlazeFace-PyTorch/blazeface.pth")
+            self.blaze_face.load_anchors("BlazeFace-PyTorch/anchors.npy")
+            back_net = BlazeFace(back_model=True).to(self.device)
+            back_net.load_weights("BlazeFace-PyTorch/blazefaceback.pth")
+            back_net.load_anchors("BlazeFace-PyTorch/anchorsback.npy")
+            self.blaze_face.min_score_thresh = 0.4
+            self.blaze_face.min_suppression_threshold = 0.3
+            
         # facial landmarks
         self.facelandmarker = FacialLM_Model().to(self.device)
         self.facelandmarker_weights = torch.load('mediapipe_pytorch/facial_landmarks/model_weights/facial_landmarks.pth')
@@ -77,6 +99,7 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
         x1, y1, x2, y2 = bbox.astype(int)
         cropped_face_tensor = img[y1:y2, x1:x2, :]
         return cropped_face_tensor
+    
 
     def preprocess_face_for_landmark_detection(self, img):
         """
@@ -190,7 +213,7 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
         """
         img: tensor, H x W x 3, RGB
         """
-        img = img.numpy().astype(np.uint8)
+        img = img.detach().cpu().numpy().astype(np.uint8)
         img = np.ascontiguousarray(img, dtype=np.uint8)
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         for i in range(facial_landmarks.shape[0]):
@@ -204,7 +227,7 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
         """
         img: tensor, H x W x 3, RGB
         """
-        img = img.numpy().astype(np.uint8)
+        img = img.deatch().cpu().numpy().astype(np.uint8)
         img = np.ascontiguousarray(img, dtype=np.uint8)
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         right_eye_left, right_eye_right, right_eye_top, right_eye_bottom = right_eye_bounds
@@ -284,20 +307,23 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
         blendshapes: torch.Tensor
             52 tensor of blendshape scores
         """
+        
+        if self.long_range_face_detect:
+            long_range_cropped_face = self.detect_face(img_tensor)
+            if torch.all(long_range_cropped_face == 0):
+                landmarks_zeroes = torch.zeros(478, 3)
+                blendshapes_zeroes = torch.zeros(52)
+                face_zeroes = torch.zeros(img_tensor.shape)
+                return landmarks_zeroes, blendshapes_zeroes, face_zeroes
+            else:
+                img_tensor = long_range_cropped_face
+        
+        if self.short_range_face_detect:
+            bbox, img_tensor = self.blaze_face.predict_on_image(img_tensor)
+        else:
+            bbox = None
 
-        """      
-        check if face is all zeros, which indicates no face was detected.
-        this is not differentiable and the bbox isn't used. It's only here as a check to prevent 
-        running the facial landmark detection model on an image with no face, 
-        which would cause bizarre landmarks to be extracted with no recourse.
-        """
-        face_check = self.detect_face(img_tensor)
-        if torch.all(face_check == 0):
-            landmarks_zeroes = torch.zeros(478, 3)
-            blendshapes_zeroes = torch.zeros(52)
-            face_zeroes = torch.zeros(img_tensor.shape)
-            return landmarks_zeroes, blendshapes_zeroes, face_zeroes
-
+        print(img_tensor.shape)
         proc_face = self.preprocess_face_for_landmark_detection(img_tensor)
 
         # run facial landmark detection
@@ -308,7 +334,7 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
         # only for visualization
         padded_face = self.unnormalize_face(proc_face) # undo normalization and permutation applied for facial landmark detection, but leave the padding it added
         
-        # vis_facial_landmarks(padded_face, facial_landmarks) # debugging only
+        # self.vis_facial_landmarks(padded_face, facial_landmarks) # debugging only
 
         # get eye bounds
         right_eye_left, right_eye_right, right_eye_top, right_eye_bottom, right_eye_width, right_eye_height = self.get_eye_bounds(facial_landmarks, eye = "right")
@@ -353,7 +379,7 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
         and here https://github.com/google-ai-edge/mediapipe/blob/master/docs/solutions/iris.md 
         this is how the eventual eye-related 478-landmarkers in MP implementation are obtained.
         """
-        keep_eye_ids = [i for i in range(71)] # eye landmarks to refine based on iris landmarker output, in case you want to only replace some
+        keep_eye_ids = [i for i in range(0, 48)] + [i for i in range(54,63)] # eye landmarks to refine based on iris landmarker output, in case you want to only replace some
         
         # debugging only
         # all_left_eye_landmarks = torch.cat([left_eye_contour_landmarks[keep_eye_ids], left_iris_landmarks], dim=0)
@@ -403,6 +429,6 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
         # clip blendshapes to be between 0 and 1 because the real MP does not predict values outside this range
         blendshapes = torch.clamp(blendshapes, 0, 1) 
 
-        return all_landmarks, blendshapes, padded_face
+        return all_landmarks, blendshapes, padded_face, bbox
 
 

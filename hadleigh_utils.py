@@ -204,6 +204,7 @@ def compare_to_real_mediapipe(landmarks_torch,  blendshapes, padded_face, save_l
         padded_face : np.ndarray, HxWx3 in RGB format
             Image of the face that was padded and preprocessed for the facial landmark detection. 
             All landmarks are relative to this image, so we must use it to visualize the landmarks and blendshapes outputted by our model.
+
     
     Returns:
         None

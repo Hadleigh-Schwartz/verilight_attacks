@@ -118,7 +118,7 @@ class VeriLightDynamicFeatures(nn.Module):
         feature_values = torch.empty(video_tensor.shape[0], len(self.target_features)) # list of values for each feature in self.target_features for each frame
         for i in range(video_tensor.shape[0]):
             frame = video_tensor[i, :, :, :]
-            landmarks, blendshapes, padded_face = self.mp(frame)
+            landmarks, blendshapes, padded_face, bbox = self.mp(frame)
 
             landmarks_curr = landmarks.detach().cpu().numpy().copy()# for vis. idk why but if i dont do copy it takes on the value of the lanmdarks noramlized in alignment...
             landmarks_over_time.append(landmarks_curr)

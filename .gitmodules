@@ -7,3 +7,6 @@
 [submodule "deconstruct-mediapipe"]
 	path = deconstruct-mediapipe
 	url = https://github.com/Hadleigh-Schwartz/deconstruct-mediapipe.git
+[submodule "BlazeFace-PyTorch"]
+	path = BlazeFace-PyTorch
+	url = https://github.com/Hadleigh-Schwartz/BlazeFace-PyTorch.git

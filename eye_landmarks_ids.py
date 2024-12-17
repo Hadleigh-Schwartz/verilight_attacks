@@ -4,10 +4,6 @@ These are in the order that the 71 eye contour landmarks returned by the separat
 The above code and description here https://github.com/google-ai-edge/mediapipe/blob/master/docs/solutions/iris.md
 indicate that in the official FaceLandmarker (478 landmarks - 468 facial and 10 extra iris) release, the eye contour landmarks obtained are actually a refined version of the original 71 landmarks
 returned by the 468-point facial landmarker, obtained via the iris landmarking run under the hood after getting an initial guess from the 468-point model.
-
-I exclude the brow-related ids from ones we want to replace because I find replacing this yields much worse results for the downstream
-blednshape task. Basically, if the eye crop passed to the iris landmarker doesn't contain sufficient brow, the halo/brow landmarks
-it returns are way too low on the eye and a worse estimate than the originla 468-point model's brow landmarks.
 """
 
 eye_landmark_ids = [   # Left eye
@@ -67,14 +63,14 @@ eye_landmark_ids = [   # Left eye
     189,
     # halo x4 upper contour (no lower because of mesh structure)
     # or eyebrow inner contour
-    35,
-    124,
-    46,
-    53,
-    52,
-    65,
+    # 35, #48
+    # 124,
+    # 46,
+    # 53,
+    # 52,
+    # 65,
     # halo x5 lower contour
-    143,
+    143,#54
     111,
     117,
     118,
@@ -85,14 +81,14 @@ eye_landmark_ids = [   # Left eye
     245,
     # halo x5 upper contour (excluding corners)
     # or eyebrow outer contour
-    156,
-    70,
-    63,
-    105,
-    66,
-    107,
-    55,
-    193,
+    # 156, # 63
+    # 70,
+    # 63,
+    # 105,
+    # 66,
+    # 107,
+    # 55,
+    # 193,
 
     # # Right eye
     # eye lower contour
@@ -151,12 +147,12 @@ eye_landmark_ids = [   # Left eye
     413,
     # halo x4 upper contour (no lower because of mesh structure)
     # or eyebrow inner contour
-    265,
-    353,
-    276,
-    283,
-    282,
-    295,
+    # 265,
+    # 353,
+    # 276,
+    # 283,
+    # 282,
+    # 295,
     # halo x5 lower contour
     372,
     340,
@@ -169,12 +165,12 @@ eye_landmark_ids = [   # Left eye
     465,
     # halo x5 upper contour (excluding corners)
     # or eyebrow outer contour
-    383,
-    300,
-    293,
-    334,
-    296,
-    336,
-    285,
-    417
+    # 383,
+    # 300,
+    # 293,
+    # 334,
+    # 296,
+    # 336,
+    # 285,
+    # 417
 ]
