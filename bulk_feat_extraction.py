@@ -28,12 +28,12 @@ with torch.no_grad():
             os.makedirs(f"{output_dir}/{mod_perc}/{model}", exist_ok=False)
             videos_paths = glob.glob(f"{root_dir}/{mod_perc}/{model}/*.mp4")
             for video_path in videos_paths:
-                # print("Extracting differentiable dynamic features from ", video_path)
-                # video_name = video_path.split("/")[-1].split(".")[0]
-                # frames = aggregate_video_frames(video_path, 117)
-                # frames = frames.to(device)
-                # diff_dynamic_vec = vl(frames)
-                # diff_dynamic_vec_np = diff_dynamic_vec.detach().cpu().numpy()
-                # np.save(f"{output_dir}/{mod_perc}/{model}/{video_name}_diff_dynamic_vec.npy", diff_dynamic_vec_np)
-                # gc.collect() # avoid cuda out of memory during repeated inference (https://github.com/ultralytics/ultralytics/issues/4057_
+                print("Extracting differentiable dynamic features from ", video_path)
+                video_name = video_path.split("/")[-1].split(".")[0]
+                frames = aggregate_video_frames(video_path, 117)
+                frames = frames.to(device)
+                diff_dynamic_vec = vl(frames)
+                diff_dynamic_vec_np = diff_dynamic_vec.detach().cpu().numpy()
+                np.save(f"{output_dir}/{mod_perc}/{model}/{video_name}_diff_dynamic_vec.npy", diff_dynamic_vec_np)
+                gc.collect() # avoid cuda out of memory during repeated inference (https://github.com/ultralytics/ultralytics/issues/4057_
 
