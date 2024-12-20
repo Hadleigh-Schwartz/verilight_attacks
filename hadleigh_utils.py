@@ -20,7 +20,7 @@ from test_converted_model import init_mpipe_blendshapes_model, get_blendshape_sc
 from blendshape_info import BLENDSHAPE_NAMES
 
 
-def aggregate_video_frames(video_path, max_frames):
+def aggregate_video_frames(video_path, max_frames = None):
     """
     Aggregate a video's frames into a torch tensor of shape (frames, H, W, 3), RGB order,
     for input to the VeriLightDynamicFeatures differentiable dynamic feature extractor.
@@ -33,8 +33,9 @@ def aggregate_video_frames(video_path, max_frames):
         if not ret:
             break 
         frame_num += 1
-        if frame_num > max_frames:
-            break
+        if max_frames is not None:
+            if frame_num > max_frames:
+                break
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad = True)
         frames.append(img_tensor)
