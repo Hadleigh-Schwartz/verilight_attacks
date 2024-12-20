@@ -13,6 +13,7 @@ import numpy as np
 from hadleigh_utils import pad_image
 from matplotlib import pyplot as plt
 from eye_landmarks_ids import eye_landmark_ids
+import time
 
 sys.path.append("facenet-pytorch")
 from models.mtcnn import MTCNN
@@ -341,7 +342,7 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
 
         proc_face = self.preprocess_face_for_landmark_detection(img_tensor)
 
-        # run facial landmark detection
+        # run facial landmark detection==
         facial_landmarks, confidence = self.facelandmarker.predict(proc_face) # predict
         facial_landmarks = facial_landmarks[0, :, :, :] # assume there is only one face in the image, so take the first set of landmarks
         facial_landmarks = facial_landmarks.view(468, 3)
