@@ -322,17 +322,22 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
 
         if self.long_range_face_detect:
             long_range_cropped_face = self.detect_face(img_tensor)
-            if torch.all(long_range_cropped_face == 0):
+            if torch.all(long_range_cropped_face == 0) or \
+                ((long_range_cropped_face.shape[0] / long_range_cropped_face.shape[1]) > 3) or \
+                long_range_cropped_face.shape[0] < 100 or long_range_cropped_face.shape[1] < 100:
                 landmarks_zeroes = torch.zeros(478, 3)
                 blendshapes_zeroes = torch.zeros(52)
                 face_zeroes = torch.zeros(img_tensor.shape)
                 return landmarks_zeroes, blendshapes_zeroes, face_zeroes
             else:
                 img_tensor = long_range_cropped_face
+                print(img_tensor.shape)
         
         if self.short_range_face_detect:
             short_range_cropped_face = self.blaze_face.predict_on_image(img_tensor)
-            if torch.all(short_range_cropped_face == 0):
+            if torch.all(short_range_cropped_face == 0) or \
+                ((short_range_cropped_face.shape[0] / short_range_cropped_face.shape[1]) > 3) or \
+                short_range_cropped_face.shape[0] < 100 or short_range_cropped_face.shape[1] < 100:
                 landmarks_zeroes = torch.zeros(478, 3)
                 blendshapes_zeroes = torch.zeros(52)
                 face_zeroes = torch.zeros(img_tensor.shape)
