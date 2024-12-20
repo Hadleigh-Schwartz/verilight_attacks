@@ -57,7 +57,7 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
 
         if self.long_range_face_detect:
             # face detection
-            self.mtcnn = MTCNN(thresholds = [0.4, 0.4, 0.4], device = self.device) # more generous thresholds to ensure face is detected
+            self.mtcnn = MTCNN(thresholds = [0.6, 0.6, 0.6], device = self.device) # more generous thresholds to ensure face is detected
         
         if self.short_range_face_detect:
             # blazeface face detection
@@ -331,7 +331,6 @@ class PyTorchMediapipeFaceLandmarker(nn.Module):
                 return landmarks_zeroes, blendshapes_zeroes, face_zeroes
             else:
                 img_tensor = long_range_cropped_face
-                print(img_tensor.shape)
         
         if self.short_range_face_detect:
             short_range_cropped_face = self.blaze_face.predict_on_image(img_tensor)

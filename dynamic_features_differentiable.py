@@ -16,8 +16,8 @@ from models.mtcnn import MTCNN
 def visualize_signals(signals, padded_faces, landmarks_over_time):
     target_features = [(0, 17), (40, 17), (270, 17), (0, 91), (0, 321),
                                  6, 7, 8, 9, 10, 11, 12, 23, 25, 50, 51] 
-    # vis_feature_ids = [0, 1, 2, 3, 4]
-    vis_feature_ids = [8, 9]
+    vis_feature_ids = [0, 1, 2, 3, 4]
+    # vis_feature_ids = [8, 9]
     signals_min = signals.min()
     signals_max = signals.max()
     out = None
